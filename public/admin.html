@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FakeLive Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;background:#06060e;color:#e8e8f0;font-family:'Syne',sans-serif;}
+#login-screen{position:fixed;inset:0;z-index:99;background:#06060e;display:flex;align-items:center;justify-content:center;}
+.login-box{width:320px;background:#0d0d1a;border:1px solid #1e1e35;border-radius:14px;padding:32px;display:flex;flex-direction:column;gap:16px;}
+.login-logo{display:flex;align-items:center;gap:8px;}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:#e63946;}
+.logo-text{font-size:18px;font-weight:800;color:#fff;}
+.logo-sub{font-size:10px;color:#e63946;font-weight:700;letter-spacing:.08em;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:10px;color:#444;letter-spacing:.07em;text-transform:uppercase;}
+.field input,.field select{background:#080812;border:1px solid #1a1a2e;border-radius:7px;color:#e8e8f0;font-size:13px;padding:9px 11px;font-family:'Syne',sans-serif;outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus{border-color:#7c3aed;}
+.field select option{background:#0f0f1a;}
+.login-btn{background:#7c3aed;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;padding:11px;cursor:pointer;font-family:'Syne',sans-serif;transition:background .15s;}
+.login-btn:hover{background:#6d28d9;}
+#login-err{font-size:11px;color:#e63946;min-height:14px;text-align:center;}
+#app{display:none;min-height:100vh;padding:20px;max-width:1200px;margin:0 auto;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.page-title{display:flex;align-items:center;gap:10px;}
+.page-title .dot{width:8px;height:8px;border-radius:50%;background:#e63946;animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.page-title h1{font-size:20px;font-weight:800;color:#fff;}
+.page-title span{font-size:11px;color:#e63946;font-weight:700;letter-spacing:.06em;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.logout-btn{background:none;border:1px solid #1e1e35;color:#555;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;transition:all .15s;}
+.logout-btn:hover{border-color:#e63946;color:#e63946;}
+#ws-status{font-size:10px;font-family:'IBM Plex Mono',monospace;color:#4ade80;}
+#ws-status.off{color:#f87171;}
+.tabs{display:flex;gap:4px;background:#0a0a14;border-radius:10px;padding:4px;margin-bottom:20px;}
+.tab{flex:1;padding:8px;border-radius:7px;border:none;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:none;color:#444;text-align:center;}
+.tab.active{background:#111122;color:#e8e8f0;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px;}
+.stat-card{background:#0d0d1a;border:1px solid #1a1a2e;border-radius:10px;padding:14px;}
+.stat-card .slabel{font-size:10px;color:#444;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;}
+.stat-card .sval{font-size:26px;font-weight:800;color:#fff;font-family:'IBM Plex Mono',monospace;}
+.stat-card .sval.green{color:#4ade80;}
+.stat-card .sval.yellow{color:#fbbf24;}
+.stat-card .sval.red{color:#f87171;}
+.stat-card .sval.purple{color:#a78bfa;}
+.stat-card .sval.blue{color:#60a5fa;}
+.section{background:#0d0d1a;border:1px solid #1a1a2e;border-radius:12px;margin-bottom:14px;overflow:hidden;}
+.section-header{padding:12px 16px;border-bottom:1px solid #111122;display:flex;align-items:center;justify-content:space-between;}
+.section-header h2{font-size:12px;font-weight:700;color:#555;letter-spacing:.07em;text-transform:uppercase;}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:.04em;}
+.badge.yellow{background:#fbbf2418;color:#fbbf24;border:1px solid #fbbf2433;}
+.badge.green{background:#4ade8018;color:#4ade80;border:1px solid #4ade8033;}
+.badge.red{background:#f8717118;color:#f87171;border:1px solid #f8717133;}
+.badge.blue{background:#60a5fa18;color:#60a5fa;border:1px solid #60a5fa33;}
+.badge.purple{background:#a78bfa18;color:#a78bfa;border:1px solid #a78bfa33;}
+.empty{padding:20px;text-align:center;color:#222;font-size:12px;}
+.item-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #0a0a14;}
+.item-row:last-child{border-bottom:none;}
+.item-row:hover{background:#0a0a12;}
+.user-info{display:flex;align-items:center;gap:10px;}
+.uavatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;}
+.uavatar.streamer{background:linear-gradient(135deg,#e63946,#c01020);}
+.uavatar.viewer{background:linear-gradient(135deg,#3b82f6,#1d4ed8);}
+.uavatar.pending{background:linear-gradient(135deg,#fbbf24,#d97706);}
+.uavatar.banned{background:linear-gradient(135deg,#555,#333);}
+.uname{font-size:13px;font-weight:700;color:#fff;}
+.umeta{font-size:10px;color:#333;margin-top:1px;font-family:'IBM Plex Mono',monospace;}
+.action-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
+.btn{border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .15s;border:1px solid;}
+.btn-approve{background:#16a34a14;border-color:#16a34a44;color:#4ade80;}
+.btn-approve:hover{background:#16a34a33;}
+.btn-reject{background:#e6394614;border-color:#e6394644;color:#f87171;}
+.btn-reject:hover{background:#e6394633;}
+.btn-kick{background:#f9731614;border-color:#f9731644;color:#fb923c;}
+.btn-kick:hover{background:#f9731633;}
+.btn-ban{background:#dc262614;border-color:#dc262644;color:#f87171;}
+.btn-ban:hover{background:#dc262633;}
+.btn-ip-temp{background:#7c3aed14;border-color:#7c3aed44;color:#a78bfa;}
+.btn-ip-temp:hover{background:#7c3aed33;}
+.btn-ip-perma{background:#1a0a0a;border-color:#7f1d1d;color:#dc2626;}
+.btn-ip-perma:hover{background:#7f1d1d33;}
+.btn-unban{background:#16a34a14;border-color:#16a34a44;color:#4ade80;}
+.btn-unban:hover{background:#16a34a33;}
+.btn-revoke{background:#92400e14;border-color:#92400e44;color:#fbbf24;}
+.btn-revoke:hover{background:#92400e33;}
+.btn-small{padding:3px 8px;font-size:10px;}
+.role-pill{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase;}
+.role-pill.streamer{background:#e6394614;color:#f87171;border:1px solid #e6394633;}
+.role-pill.viewer{background:#60a5fa14;color:#60a5fa;border:1px solid #60a5fa33;}
+.status-pill{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase;}
+.status-pill.approved{background:#4ade8014;color:#4ade80;border:1px solid #4ade8033;}
+.status-pill.pending{background:#fbbf2414;color:#fbbf24;border:1px solid #fbbf2433;}
+.status-pill.rejected{background:#f8717114;color:#f87171;border:1px solid #f8717133;}
+.status-pill.banned{background:#33333314;color:#555;border:1px solid #33333333;}
+.room-block{border-bottom:1px solid #0a0a14;padding:12px 16px;}
+.room-block:last-child{border-bottom:none;}
+.room-label{font-size:10px;color:#2a2a3a;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;}
+.streamer-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#0a0a18;border-radius:7px;margin-bottom:6px;}
+.slabel-tag{font-size:9px;color:#e63946;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px;}
+.log-row{display:flex;align-items:flex-start;gap:10px;padding:8px 16px;border-bottom:1px solid #0a0a14;font-size:11px;}
+.log-row:last-child{border-bottom:none;}
+.log-action{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:10px;padding:2px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;}
+.log-action.APPROVE_ACCOUNT,.log-action.UNBAN_ACCOUNT{background:#16a34a18;color:#4ade80;}
+.log-action.REJECT_ACCOUNT,.log-action.BAN_ACCOUNT{background:#e6394618;color:#f87171;}
+.log-action.KICK{background:#f9731618;color:#fb923c;}
+.log-action.TEMP_IP_BAN{background:#7c3aed18;color:#a78bfa;}
+.log-action.PERMA_IP_BAN{background:#7f1d1d33;color:#dc2626;}
+.log-action.UNBAN_IP{background:#16a34a18;color:#4ade80;}
+.log-action.REGISTER{background:#60a5fa18;color:#60a5fa;}
+.log-action.END_STREAM{background:#33333318;color:#888;}
+.log-action.AUTO_IP_BAN{background:#1e1b4b33;color:#818cf8;}
+.log-target{color:#aaa;flex:1;}
+.log-reason{color:#444;font-size:10px;font-family:'IBM Plex Mono',monospace;}
+.log-time{color:#222;font-family:'IBM Plex Mono',monospace;font-size:10px;white-space:nowrap;}
+.modal-bg{position:fixed;inset:0;background:#000a;z-index:1000;display:none;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:#0f0f1a;border:1px solid #1e1e35;border-radius:14px;padding:28px;width:380px;display:flex;flex-direction:column;gap:14px;}
+.modal h3{font-size:16px;font-weight:800;color:#fff;}
+.modal p{font-size:12px;color:#666;line-height:1.6;}
+.modal input,.modal select{background:#080812;border:1px solid #1a1a2e;border-radius:7px;color:#e8e8f0;font-size:13px;padding:9px 11px;font-family:'Syne',sans-serif;outline:none;width:100%;transition:border-color .15s;}
+.modal input:focus,.modal select:focus{border-color:#7c3aed;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;}
+.modal-cancel{background:none;border:1px solid #1e1e35;color:#555;border-radius:7px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;}
+.modal-confirm{background:#7c3aed;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;font-family:'Syne',sans-serif;}
+.modal-confirm.danger{background:#dc2626;}
+.modal-err{font-size:11px;color:#e63946;min-height:14px;}
+.warning-box{background:#7f1d1d18;border:1px solid #7f1d1d44;border-radius:8px;padding:10px 14px;font-size:12px;color:#f87171;line-height:1.5;}
+.countdown{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7c3aed;}
+#toast{position:fixed;bottom:20px;right:20px;background:#111122;border:1px solid #7c3aed55;border-radius:8px;padding:10px 18px;font-size:13px;color:#a78bfa;display:none;z-index:9999;animation:fadeIn .2s;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo"><div class="logo-dot"></div><span class="logo-text">FakeLive</span><span class="logo-sub">ADMIN</span></div>
+    <h2 style="font-size:18px;font-weight:800;color:#fff;">Admin Login</h2>
+    <div class="field"><label>Username</label><input id="admin-user" placeholder="admin" autocomplete="off"/></div>
+    <div class="field"><label>Password</label><input id="admin-pass" type="password" placeholder="••••••••"/></div>
+    <div id="login-err"></div>
+    <button class="login-btn" id="login-btn">Login →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="page-header">
+    <div class="page-title">
+      <div class="dot"></div>
+      <h1>FakeLive Admin</h1>
+      <span>v5</span>
+    </div>
+    <div class="header-right">
+      <span id="ws-status">Connecting...</span>
+      <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="slabel">Pending Accounts</div><div class="sval yellow" id="s-pending-accounts">0</div></div>
+    <div class="stat-card"><div class="slabel">Total Users</div><div class="sval blue" id="s-total">0</div></div>
+    <div class="stat-card"><div class="slabel">Live Streamers</div><div class="sval green" id="s-streamers">0</div></div>
+    <div class="stat-card"><div class="slabel">Viewers Online</div><div class="sval" id="s-viewers">0</div></div>
+    <div class="stat-card"><div class="slabel">Banned Accounts</div><div class="sval red" id="s-banned">0</div></div>
+    <div class="stat-card"><div class="slabel">IP Bans</div><div class="sval purple" id="s-ipbans">0</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('accounts')">👤 Accounts</button>
+    <button class="tab" onclick="switchTab('live')">🔴 Live</button>
+    <button class="tab" onclick="switchTab('bans')">🚫 Bans</button>
+    <button class="tab" onclick="switchTab('log')">📋 Log</button>
+  </div>
+
+  <!-- ACCOUNTS TAB -->
+  <div class="tab-panel active" id="tab-accounts">
+    <div class="section" style="margin-bottom:14px;">
+      <div class="section-header"><h2>⏳ Pending Streamer Approvals</h2><span class="badge yellow" id="pending-accounts-badge">0 waiting</span></div>
+      <div id="pending-accounts-list"><div class="empty">No pending applications</div></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><h2>👥 All Registered Users</h2><span class="badge blue" id="all-users-badge">0 users</span></div>
+      <div id="all-users-list"><div class="empty">No users yet</div></div>
+    </div>
+  </div>
+
+  <!-- LIVE TAB -->
+  <div class="tab-panel" id="tab-live">
+    <div class="section">
+      <div class="section-header"><h2>🔴 Active Rooms</h2><span class="badge green" id="rooms-badge">0 live</span></div>
+      <div id="rooms-list"><div class="empty">No active rooms</div></div>
+    </div>
+  </div>
+
+  <!-- BANS TAB -->
+  <div class="tab-panel" id="tab-bans">
+    <div class="section" style="margin-bottom:14px;">
+      <div class="section-header"><h2>🌐 IP Bans</h2><span class="badge purple" id="ipban-badge">0</span></div>
+      <div id="ipban-list"><div class="empty">No active IP bans</div></div>
+    </div>
+  </div>
+
+  <!-- LOG TAB -->
+  <div class="tab-panel" id="tab-log">
+    <div class="section">
+      <div class="section-header"><h2>📋 Admin Action Log</h2><span class="badge blue">Last 50</span></div>
+      <div id="log-list"><div class="empty">No actions logged yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-bg" id="modal-ban-account">
+  <div class="modal">
+    <h3>🚫 Ban Account</h3>
+    <p>This will immediately disconnect the user and prevent them from logging in.</p>
+    <div class="field"><label>Username</label><input id="ban-account-name" readonly/></div>
+    <div class="field"><label>Reason (required)</label><input id="ban-account-reason" placeholder="e.g. Violating terms of service"/></div>
+    <div class="modal-err" id="ban-account-err"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('modal-ban-account')">Cancel</button>
+      <button class="modal-confirm danger" onclick="confirmBanAccount()">Ban Account</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-ip-temp">
+  <div class="modal">
+    <h3>⏱ Temporary IP Ban</h3>
+    <div class="field"><label>IP Address</label><input id="ip-temp-addr" readonly/></div>
+    <div class="field"><label>Duration</label>
+      <select id="ip-temp-duration">
+        <option value="3600000">1 Hour</option>
+        <option value="86400000" selected>24 Hours</option>
+        <option value="604800000">7 Days</option>
+      </select>
+    </div>
+    <div class="field"><label>Reason (required)</label><input id="ip-temp-reason" placeholder="e.g. Repeated ban evasion"/></div>
+    <div class="modal-err" id="ip-temp-err"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('modal-ip-temp')">Cancel</button>
+      <button class="modal-confirm" onclick="confirmTempIpBan()">Apply Temp Ban</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-ip-perma">
+  <div class="modal">
+    <h3>☠️ Permanent IP Ban</h3>
+    <div class="warning-box">⚠️ This IP will be permanently blocked until you manually remove it.</div>
+    <div class="field"><label>IP Address</label><input id="ip-perma-addr" readonly/></div>
+    <div class="field"><label>Reason (required)</label><input id="ip-perma-reason" placeholder="e.g. Severe repeated abuse"/></div>
+    <div class="modal-err" id="ip-perma-err"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('modal-ip-perma')">Cancel</button>
+      <button class="modal-confirm danger" onclick="confirmPermaIpBan()">PERMA BAN IP</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-kick">
+  <div class="modal">
+    <h3>⚡ Kick User</h3>
+    <div class="field"><label>Username</label><input id="kick-name" readonly/></div>
+    <div class="field"><label>Reason (optional)</label><input id="kick-reason" placeholder="e.g. Inappropriate behaviour"/></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('modal-kick')">Cancel</button>
+      <button class="modal-confirm" onclick="confirmKick()">Kick</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-reject-account">
+  <div class="modal">
+    <h3>❌ Reject Application</h3>
+    <div class="field"><label>Username</label><input id="reject-account-name" readonly/></div>
+    <div class="field"><label>Reason (optional)</label><input id="reject-account-reason" placeholder="e.g. Not enough information provided"/></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('modal-reject-account')">Cancel</button>
+      <button class="modal-confirm danger" onclick="confirmRejectAccount()">Reject</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let adminToken = null;
+let ws = null;
+let lastState = null;
+let pendingKick = null;
+let pendingUserId = null;
+
+document.getElementById('login-btn').onclick = doLogin;
+['admin-user','admin-pass'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
+
+async function doLogin() {
+  const username = document.getElementById('admin-user').value.trim();
+  const password = document.getElementById('admin-pass').value;
+  try {
+    const res = await fetch('/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    const data = await res.json();
+    if (data.ok) {
+      adminToken = data.token;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      connectWS();
+      setInterval(updateCountdowns, 1000);
+    } else {
+      document.getElementById('login-err').textContent = 'Wrong credentials.';
+    }
+  } catch { document.getElementById('login-err').textContent = 'Cannot connect to server.'; }
+}
+
+document.getElementById('logout-btn').onclick = () => {
+  adminToken = null;
+  if (ws) ws.close();
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+};
+
+function switchTab(name) {
+  const names = ['accounts','live','bans','log'];
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.tab-panel').forEach((p, i) => p.classList.toggle('active', 'tab-' + names[i] === 'tab-' + name));
+}
+
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  const statusEl = document.getElementById('ws-status');
+  ws.onopen = () => { ws.send(JSON.stringify({ type: 'admin_connect', token: adminToken })); statusEl.textContent = '● Connected'; statusEl.className = ''; };
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'admin_auth_ok') toast('✅ Admin connected');
+    if (msg.type === 'admin_state') { lastState = msg.state; renderState(msg.state); }
+  };
+  ws.onclose = () => { statusEl.textContent = '○ Reconnecting...'; statusEl.className = 'off'; setTimeout(connectWS, 2000); };
+}
+
+function renderState(state) {
+  const pendingAccounts = state.pendingAccounts || [];
+  const allUsers        = state.allUsers || [];
+  const rooms           = state.rooms || [];
+  const ipBans          = state.ipBans || [];
+  const log             = state.recentLog || [];
+
+  const activeRooms    = rooms.filter(r => r.streamer || r.viewers.length > 0);
+  const totalViewers   = rooms.reduce((a, r) => a + r.viewers.length, 0);
+  const liveStreamers  = rooms.filter(r => r.streamer).length;
+  const bannedAccounts = allUsers.filter(u => u.status === 'banned');
+
+  document.getElementById('s-pending-accounts').textContent = pendingAccounts.length;
+  document.getElementById('s-total').textContent            = allUsers.length;
+  document.getElementById('s-streamers').textContent        = liveStreamers;
+  document.getElementById('s-viewers').textContent          = totalViewers;
+  document.getElementById('s-banned').textContent           = bannedAccounts.length;
+  document.getElementById('s-ipbans').textContent           = ipBans.length;
+  document.getElementById('pending-accounts-badge').textContent = pendingAccounts.length + ' waiting';
+  document.getElementById('all-users-badge').textContent   = allUsers.length + ' users';
+  document.getElementById('rooms-badge').textContent        = liveStreamers + ' live';
+  document.getElementById('ipban-badge').textContent        = ipBans.length;
+
+  // PENDING ACCOUNTS
+  const paEl = document.getElementById('pending-accounts-list');
+  paEl.innerHTML = pendingAccounts.length ? pendingAccounts.map(u => `
+    <div class="item-row">
+      <div class="user-info">
+        <div class="uavatar pending">${esc(u.username[0]).toUpperCase()}</div>
+        <div>
+          <div class="uname">${esc(u.username)} <span class="role-pill streamer">streamer</span></div>
+          <div class="umeta">Applied: ${new Date(u.created_at).toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-approve" onclick="approveAccount('${u._id}','${esc(u.username)}')">✅ Approve</button>
+        <button class="btn btn-reject" onclick="openRejectAccount('${u._id}','${esc(u.username)}')">❌ Reject</button>
+        <button class="btn btn-ban" onclick="openBanAccount('${u._id}','${esc(u.username)}')">🚫 Ban</button>
+      </div>
+    </div>`).join('') : '<div class="empty">No pending applications ✅</div>';
+
+  // ALL USERS
+  const auEl = document.getElementById('all-users-list');
+  auEl.innerHTML = allUsers.length ? allUsers.map(u => `
+    <div class="item-row">
+      <div class="user-info">
+        <div class="uavatar ${u.status === 'banned' ? 'banned' : u.role}">${esc(u.username[0]).toUpperCase()}</div>
+        <div>
+          <div class="uname" style="color:${u.status==='banned'?'#555':'#fff'};">${esc(u.username)}</div>
+          <div class="umeta" style="display:flex;gap:5px;margin-top:3px;align-items:center;">
+            <span class="role-pill ${u.role}">${u.role}</span>
+            <span class="status-pill ${u.status}">${u.status}</span>
+            ${u.ban_reason ? `<span style="color:#555;font-size:10px;">· ${esc(u.ban_reason)}</span>` : ''}
+          </div>
+          <div class="umeta" style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+            <span style="color:#252535;font-size:10px;">🔑</span>
+            <span id="pw-${u._id}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#333;letter-spacing:.04em;">••••••••</span>
+            <button onclick="togglePw('${u._id}','${esc(u.plain_password||'(unknown)')}')" style="background:none;border:1px solid #1a1a2a;border-radius:4px;color:#444;font-size:10px;padding:1px 6px;cursor:pointer;">Show</button>
+          </div>
+        </div>
+      </div>
+      <div class="action-row">
+        ${u.status === 'banned'
+          ? `<button class="btn btn-unban" onclick="unbanAccount('${u._id}','${esc(u.username)}')">✅ Unban</button>`
+          : `<button class="btn btn-ban btn-small" onclick="openBanAccount('${u._id}','${esc(u.username)}')">🚫 Ban</button>`}
+        ${u.status === 'pending' ? `<button class="btn btn-approve btn-small" onclick="approveAccount('${u._id}','${esc(u.username)}')">✅ Approve</button>` : ''}
+      </div>
+    </div>`).join('') : '<div class="empty">No users registered yet</div>';
+
+  // ROOMS
+  const rEl = document.getElementById('rooms-list');
+  rEl.innerHTML = activeRooms.length ? activeRooms.map(r => `
+    <div class="room-block">
+      <div class="room-label">Room: ${esc(r.roomId)}</div>
+      ${r.streamer ? `
+        <div class="streamer-row">
+          <div><div class="slabel-tag">🎙 Streamer</div><div class="uname">${esc(r.streamer.username)}</div><div class="umeta">IP: ${esc(r.streamer.ip || '?')}</div></div>
+          <div class="action-row">
+            <button class="btn btn-kick btn-small" onclick="openKick('${r.streamer.id}','${r.roomId}','${esc(r.streamer.username)}')">⚡ Kick</button>
+            <button class="btn btn-ip-temp btn-small" onclick="openTempIp('${esc(r.streamer.ip || '')}')">⏱ IP</button>
+            <button class="btn btn-ip-perma btn-small" onclick="openPermaIp('${esc(r.streamer.ip || '')}')">☠️</button>
+          </div>
+        </div>` : '<div style="font-size:11px;color:#222;padding:4px 0 8px;">No streamer</div>'}
+      ${r.viewers.length ? `
+        <div style="font-size:10px;color:#2a2a3a;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;font-family:'IBM Plex Mono',monospace;">👥 Viewers (${r.viewers.length})</div>
+        ${r.viewers.map(v => `
+          <div class="item-row" style="padding:6px 10px;">
+            <div class="user-info">
+              <div class="uavatar viewer" style="width:24px;height:24px;font-size:10px;">${esc(v.username[0]).toUpperCase()}</div>
+              <div><div style="font-size:12px;color:#aaa;">${esc(v.username)}</div><div class="umeta">IP: ${esc(v.ip || '?')}</div></div>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-kick btn-small" onclick="openKick('${v.id}','${r.roomId}','${esc(v.username)}')">⚡ Kick</button>
+              <button class="btn btn-ip-temp btn-small" onclick="openTempIp('${esc(v.ip || '')}')">⏱ IP</button>
+              <button class="btn btn-ip-perma btn-small" onclick="openPermaIp('${esc(v.ip || '')}')">☠️</button>
+            </div>
+          </div>`).join('')}` : ''}
+    </div>`).join('') : '<div class="empty">No active rooms</div>';
+
+  // IP BANS
+  const ipEl = document.getElementById('ipban-list');
+  ipEl.innerHTML = ipBans.length ? ipBans.map(b => `
+    <div class="item-row">
+      <div class="user-info">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a78bfa;">${esc(b.ip)}</div>
+        <div style="margin-left:10px;">
+          <div class="umeta">Reason: ${esc(b.reason)}</div>
+          <div class="umeta">By: ${esc(b.bannedBy)} · ${b.expiresAt === null ? '<span style="color:#dc2626;font-weight:700;">PERMANENT</span>' : '<span class="countdown" data-expires="' + b.expiresAt + '">calculating...</span>'}</div>
+        </div>
+      </div>
+      <button class="btn btn-unban" onclick="unbanIp('${esc(b.ip)}')">✅ Lift Ban</button>
+    </div>`).join('') : '<div class="empty">No active IP bans</div>';
+
+  // LOG
+  const logEl = document.getElementById('log-list');
+  logEl.innerHTML = log.length ? log.map(l => `
+    <div class="log-row">
+      <span class="log-action ${l.action}">${l.action}</span>
+      <span class="log-target">${esc(l.target)}</span>
+      <span class="log-reason">${esc(l.reason)}</span>
+      <span class="log-time">${new Date(l.timestamp).toLocaleTimeString()}</span>
+    </div>`).join('') : '<div class="empty">No actions yet</div>';
+}
+
+function updateCountdowns() {
+  document.querySelectorAll('.countdown[data-expires]').forEach(el => {
+    const exp = parseInt(el.dataset.expires);
+    const left = exp - Date.now();
+    if (left <= 0) { el.textContent = 'Expired'; return; }
+    const h = Math.floor(left / 3600000);
+    const m = Math.floor((left % 3600000) / 60000);
+    const s = Math.floor((left % 60000) / 1000);
+    el.textContent = `${h}h ${m}m ${s}s remaining`;
+  });
+}
+
+async function api(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify(body) });
+  return res.json();
+}
+
+async function approveAccount(userId, username) {
+  await api('/admin/account/approve', { userId });
+  toast('✅ ' + username + ' approved!');
+}
+
+function openRejectAccount(userId, username) {
+  pendingUserId = userId;
+  document.getElementById('reject-account-name').value = username;
+  document.getElementById('reject-account-reason').value = '';
+  openModal('modal-reject-account');
+}
+async function confirmRejectAccount() {
+  const reason = document.getElementById('reject-account-reason').value.trim();
+  await api('/admin/account/reject', { userId: pendingUserId, reason });
+  closeModal('modal-reject-account'); toast('❌ Application rejected.');
+}
+
+function openBanAccount(userId, username) {
+  pendingUserId = userId;
+  document.getElementById('ban-account-name').value = username;
+  document.getElementById('ban-account-reason').value = '';
+  document.getElementById('ban-account-err').textContent = '';
+  openModal('modal-ban-account');
+}
+async function confirmBanAccount() {
+  const reason = document.getElementById('ban-account-reason').value.trim();
+  if (!reason) { document.getElementById('ban-account-err').textContent = 'Reason is required.'; return; }
+  await api('/admin/account/ban', { userId: pendingUserId, reason });
+  closeModal('modal-ban-account'); toast('🚫 Account banned.');
+}
+
+async function unbanAccount(userId, username) {
+  if (!confirm(`Unban ${username}?`)) return;
+  await api('/admin/account/unban', { userId });
+  toast('✅ Unbanned ' + username);
+}
+
+function openKick(wsId, roomId, username) {
+  pendingKick = { wsId, roomId };
+  document.getElementById('kick-name').value = username;
+  document.getElementById('kick-reason').value = '';
+  openModal('modal-kick');
+}
+async function confirmKick() {
+  const reason = document.getElementById('kick-reason').value.trim();
+  await api('/admin/kick', { ...pendingKick, reason });
+  closeModal('modal-kick'); toast('⚡ User kicked.');
+}
+
+function openTempIp(ip) {
+  if (!ip) { toast('⚠️ No IP available'); return; }
+  document.getElementById('ip-temp-addr').value = ip;
+  document.getElementById('ip-temp-reason').value = '';
+  document.getElementById('ip-temp-err').textContent = '';
+  openModal('modal-ip-temp');
+}
+async function confirmTempIpBan() {
+  const ip       = document.getElementById('ip-temp-addr').value;
+  const reason   = document.getElementById('ip-temp-reason').value.trim();
+  const duration = parseInt(document.getElementById('ip-temp-duration').value);
+  if (!reason) { document.getElementById('ip-temp-err').textContent = 'Reason is required.'; return; }
+  await api('/admin/ban/ip', { ip, reason, duration });
+  closeModal('modal-ip-temp'); toast('⏱ Temp IP ban applied');
+}
+
+function openPermaIp(ip) {
+  if (!ip) { toast('⚠️ No IP available'); return; }
+  document.getElementById('ip-perma-addr').value = ip;
+  document.getElementById('ip-perma-reason').value = '';
+  document.getElementById('ip-perma-err').textContent = '';
+  openModal('modal-ip-perma');
+}
+async function confirmPermaIpBan() {
+  const ip     = document.getElementById('ip-perma-addr').value;
+  const reason = document.getElementById('ip-perma-reason').value.trim();
+  if (!reason) { document.getElementById('ip-perma-err').textContent = 'Reason is required.'; return; }
+  if (!confirm(`⚠️ PERMANENT IP BAN for ${ip}?\n\nContinue?`)) return;
+  await api('/admin/ban/ip', { ip, reason, duration: null });
+  closeModal('modal-ip-perma'); toast('☠️ Permanent IP ban applied');
+}
+
+async function unbanIp(ip) {
+  if (!confirm(`Lift IP ban for ${ip}?`)) return;
+  await api('/admin/unban/ip', { ip });
+  toast('✅ IP ban lifted');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2500);
+}
+
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+function togglePw(userId, plainPw) {
+  const el = document.getElementById('pw-' + userId);
+  const btn = el.nextElementSibling;
+  if (el.textContent === '••••••••') {
+    el.textContent = plainPw;
+    el.style.color = '#a78bfa';
+    btn.textContent = 'Hide';
+  } else {
+    el.textContent = '••••••••';
+    el.style.color = '#333';
+    btn.textContent = 'Show';
+  }
+}
+</script>
+</body>
+</html>

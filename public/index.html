@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>FakeLive</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:#08080f;}
+body{font-family:'Syne',sans-serif;color:#e8e8f0;}
+
+#auth-screen{position:fixed;inset:0;z-index:9999;background:#08080f;display:flex;align-items:center;justify-content:center;}
+.auth-box{width:390px;background:#0f0f1a;border:1px solid #1e1e35;border-radius:16px;padding:36px 32px;display:flex;flex-direction:column;gap:16px;box-shadow:0 0 80px #7c3aed14;}
+.auth-logo{display:flex;align-items:center;gap:10px;}
+.auth-logo-dot{width:10px;height:10px;border-radius:50%;background:#e63946;animation:blink 1.2s infinite;}
+.auth-logo-name{font-size:20px;font-weight:800;color:#fff;}
+.auth-logo-beta{font-size:10px;color:#333;font-weight:400;letter-spacing:.06em;}
+.auth-tabs{display:flex;gap:4px;background:#0a0a14;border-radius:8px;padding:3px;}
+.atab-btn{flex:1;padding:8px;border-radius:6px;border:none;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:none;color:#444;}
+.atab-btn.active{background:#1a1a2a;color:#e8e8f0;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:10px;color:#444;letter-spacing:.07em;text-transform:uppercase;}
+.field input,.field select{background:#0a0a14;border:1px solid #1e1e35;border-radius:8px;color:#e8e8f0;font-size:13px;padding:10px 12px;font-family:'Syne',sans-serif;outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus{border-color:#7c3aed;}
+.field input::placeholder{color:#282838;}
+.field select option{background:#0f0f1a;}
+.auth-btn{background:#7c3aed;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;padding:12px;cursor:pointer;font-family:'Syne',sans-serif;transition:background .15s;}
+.auth-btn:hover{background:#6d28d9;}
+.auth-btn:disabled{background:#3a3a5a;cursor:not-allowed;}
+.auth-error{font-size:11px;color:#e63946;text-align:center;min-height:14px;}
+.auth-note{font-size:10px;color:#1e1e30;text-align:center;line-height:1.6;}
+.auth-success{font-size:12px;color:#4ade80;text-align:center;background:#4ade8011;border:1px solid #4ade8033;border-radius:8px;padding:10px;line-height:1.5;}
+
+#room-screen{position:fixed;inset:0;z-index:9998;background:#08080f;display:none;align-items:center;justify-content:center;}
+.room-box{width:390px;background:#0f0f1a;border:1px solid #1e1e35;border-radius:16px;padding:36px 32px;display:flex;flex-direction:column;gap:16px;box-shadow:0 0 80px #7c3aed14;}
+.room-user-info{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0a0a14;border-radius:8px;border:1px solid #1a1a2a;}
+.room-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#db2777);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;}
+.room-username{font-size:14px;font-weight:700;color:#fff;}
+.room-role-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.05em;text-transform:uppercase;}
+.room-role-badge.streamer{background:#e6394614;color:#f87171;border:1px solid #e6394633;}
+.room-role-badge.viewer{background:#60a5fa14;color:#60a5fa;border:1px solid #60a5fa33;}
+.logout-link{font-size:11px;color:#333;cursor:pointer;margin-left:auto;transition:color .15s;}
+.logout-link:hover{color:#e63946;}
+
+#app{display:flex;height:100vh;width:100%;}
+#stream-area{flex:1;display:flex;flex-direction:column;background:#08080f;border-right:1px solid #131325;position:relative;overflow:hidden;}
+#top-bar{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:#0d0d1a;border-bottom:1px solid #131325;flex-shrink:0;z-index:10;gap:10px;}
+#channel-info{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+#avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#db2777);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;}
+#channel-name{font-size:14px;font-weight:700;color:#fff;background:none;border:none;outline:none;font-family:'Syne',sans-serif;border-bottom:1px dashed transparent;transition:border-color .15s;min-width:60px;max-width:180px;}
+#channel-name:not([readonly]):focus{border-color:#7c3aed;}
+#live-badge{display:flex;align-items:center;gap:5px;background:#e63946;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.05em;flex-shrink:0;}
+#live-dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1.2s infinite;}
+#offline-badge{display:none;background:#333;color:#666;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.05em;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+#viewer-count{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+#viewer-icon{width:7px;height:7px;background:#e63946;border-radius:50%;}
+#controls-row{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;}
+#stream-timer{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#333;}
+button.ctrl{background:#0f0f1e;border:1px solid #1e1e35;color:#888;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;transition:all .15s;white-space:nowrap;}
+button.ctrl:hover{background:#1a1a2a;color:#fff;}
+button.ctrl.active-btn{background:#7c3aed22;border-color:#7c3aed;color:#a78bfa;}
+button.ctrl.danger{border-color:#e63946;color:#e63946;}
+button.ctrl.danger:hover{background:#e63946;color:#fff;}
+
+#mic-indicator{display:none;align-items:center;gap:6px;padding:4px 10px;background:#e6394611;border:1px solid #e6394644;border-radius:6px;}
+#mic-pulse{width:8px;height:8px;border-radius:50%;background:#e63946;animation:blink .6s infinite;}
+#mic-indicator span{font-size:10px;color:#e63946;font-weight:700;letter-spacing:.05em;}
+
+#quality-selector{display:none;align-items:center;gap:5px;padding:4px 8px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:6px;}
+#quality-selector label{font-size:10px;color:#444;font-weight:700;letter-spacing:.05em;}
+.q-btn{background:none;border:1px solid #1a1a2a;color:#444;border-radius:4px;padding:3px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .15s;}
+.q-btn:hover{border-color:#7c3aed44;color:#888;}
+.q-btn.active{background:#7c3aed22;border-color:#7c3aed;color:#a78bfa;}
+
+#conn-quality{display:none;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;border:1px solid transparent;transition:all .3s;}
+#conn-quality.good{background:#4ade8011;border-color:#4ade8033;color:#4ade80;}
+#conn-quality.fair{background:#fbbf2411;border-color:#fbbf2433;color:#fbbf24;}
+#conn-quality.poor{background:#e6394611;border-color:#e6394633;color:#f87171;}
+
+#latency-pill{display:none;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#333;padding:2px 7px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:5px;}
+
+#screen-container{flex:1;position:relative;background:#030307;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+#screen-preview{width:100%;height:100%;object-fit:contain;display:none;}
+#viewer-video{width:100%;height:100%;object-fit:contain;display:none;background:#000;}
+#no-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#no-screen p{color:#252538;font-size:12px;}
+button#share-btn{background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:background .15s;display:flex;align-items:center;gap:8px;}
+button#share-btn:hover{background:#6d28d9;}
+#offline-overlay{position:absolute;inset:0;background:#030307;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;}
+#offline-overlay p{color:#2a2a3a;font-size:13px;}
+#offline-pulse{width:12px;height:12px;border-radius:50%;background:#333;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.5;}50%{transform:scale(1.3);opacity:1;}}
+#cam-overlay video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+#cam-label{position:absolute;bottom:5px;left:7px;font-size:9px;color:#fff8;font-family:'IBM Plex Mono',monospace;background:#0006;padding:1px 5px;border-radius:3px;pointer-events:none;}
+#cam-close{position:absolute;top:4px;right:4px;background:#e6394677;border:none;border-radius:3px;color:#fff;font-size:10px;width:18px;height:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;}
+#cam-overlay:hover #cam-close{opacity:1;}
+#viewer-cam{position:absolute;bottom:14px;left:14px;width:280px;height:185px;border-radius:10px;overflow:hidden;border:2px solid #7c3aed44;background:#000;display:none;z-index:20;box-shadow:0 4px 24px #0009;}
+#viewer-cam video{width:100%;height:100%;object-fit:cover;}
+#viewer-cam-label{position:absolute;bottom:5px;left:7px;font-size:9px;color:#fff8;font-family:'IBM Plex Mono',monospace;background:#0006;padding:1px 5px;border-radius:3px;}
+#stream-stats{position:absolute;bottom:12px;right:12px;display:flex;gap:6px;z-index:5;flex-wrap:wrap;justify-content:flex-end;}
+.stat-pill{background:#0009;border:1px solid #1a1a28;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:#444;}
+.stat-pill span{color:#aaa;}
+#reactions-area{position:absolute;bottom:60px;right:14px;width:40px;height:200px;pointer-events:none;overflow:hidden;z-index:6;}
+.reaction-float{position:absolute;bottom:0;font-size:22px;animation:floatUp 2.5s ease-out forwards;pointer-events:none;}
+@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1;}100%{transform:translateY(-200px) scale(.7);opacity:0;}}
+#stream-title-bar{padding:6px 14px;background:#0b0b16;border-top:1px solid #131325;flex-shrink:0;display:flex;align-items:center;gap:10px;}
+#stream-title-input{flex:1;background:transparent;border:none;outline:none;color:#aaa;font-size:13px;font-family:'Syne',sans-serif;}
+#stream-title-input::placeholder{color:#1e1e30;}
+.category-tag{background:#0f0f1e;border:1px solid #1e1e35;color:#555;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:'Syne',sans-serif;transition:all .15s;}
+.category-tag:hover{color:#aaa;}
+
+#chat-panel{width:280px;display:flex;flex-direction:column;background:#09090f;flex-shrink:0;}
+#chat-header{padding:10px 14px;font-size:11px;font-weight:700;color:#333;border-bottom:1px solid #131325;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+#real-online-wrap{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4ade8055;}
+#chat-messages{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:3px;scroll-behavior:smooth;}
+#chat-messages::-webkit-scrollbar{width:2px;}
+#chat-messages::-webkit-scrollbar-thumb{background:#1e1e35;border-radius:2px;}
+.chat-msg{display:flex;flex-direction:column;gap:1px;padding:3px 6px;border-radius:5px;animation:slideIn .2s ease-out;}
+@keyframes slideIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.chat-msg:hover{background:#0d0d1a;}
+.chat-msg.real-msg{border-left:2px solid #22d3ee44;}
+.chat-msg.own-msg{background:#13132299;border-left:2px solid #7c3aed;}
+.chat-msg.system-msg .msg-text{color:#4ade8077;font-style:italic;}
+.chat-msg.throttled-msg .msg-text{color:#fbbf2477;font-style:italic;}
+.msg-meta{display:flex;align-items:center;gap:4px;}
+.msg-badge{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.04em;text-transform:uppercase;flex-shrink:0;}
+.badge-real{background:#06b6d414;color:#22d3ee;border:1px solid #06b6d433;}
+.badge-streamer{background:#e6394614;color:#f87171;border:1px solid #e6394633;}
+.badge-mod{background:#16a34a14;color:#4ade80;border:1px solid #16a34a33;}
+.badge-sub{background:#7c3aed14;color:#a78bfa;border:1px solid #7c3aed33;}
+.badge-vip{background:#d9770614;color:#fbbf24;border:1px solid #d9770633;}
+.msg-name{font-size:12px;font-weight:700;}
+.msg-time{font-size:10px;color:#252535;font-family:'IBM Plex Mono',monospace;margin-left:auto;}
+.msg-text{font-size:12px;color:#777;line-height:1.4;word-break:break-word;}
+#chat-input-area{padding:8px;border-top:1px solid #131325;flex-shrink:0;}
+#chat-input-row{display:flex;gap:6px;align-items:center;}
+#chat-input{flex:1;background:#09090f;border:1px solid #1a1a2a;border-radius:6px;color:#e8e8f0;font-size:12px;padding:7px 10px;font-family:'Syne',sans-serif;outline:none;transition:border-color .15s;}
+#chat-input:focus{border-color:#7c3aed;}
+#chat-input::placeholder{color:#202030;}
+#send-btn{background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:14px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;}
+#send-btn:hover{background:#6d28d9;}
+#emote-row{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap;}
+.emote-btn{background:none;border:1px solid #1a1a2a;border-radius:4px;font-size:13px;width:26px;height:22px;cursor:pointer;transition:all .1s;display:flex;align-items:center;justify-content:center;}
+.emote-btn:hover{background:#151525;border-color:#3a3a5a;transform:scale(1.15);}
+#chat-footer{padding:5px 12px;font-size:10px;color:#1e1e30;border-top:1px solid #131325;font-family:'IBM Plex Mono',monospace;flex-shrink:0;display:flex;justify-content:space-between;}
+.full-overlay{position:absolute;inset:0;background:#030307;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:30;}
+.full-overlay .icon{font-size:36px;}
+.full-overlay .title{font-size:16px;font-weight:700;}
+.full-overlay .sub{font-size:12px;color:#333;text-align:center;max-width:280px;line-height:1.5;}
+
+
+/* ── WATCHERS PANEL ── */
+#watchers-panel{width:200px;display:flex;flex-direction:column;background:#07070d;border-left:1px solid #131325;flex-shrink:0;}
+#watchers-header{padding:10px 12px;font-size:11px;font-weight:700;color:#333;border-bottom:1px solid #131325;letter-spacing:.08em;text-transform:uppercase;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;}
+#watchers-header span{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#2a2a3a;}
+#watchers-list{flex:1;overflow-y:auto;padding:6px;}
+#watchers-list::-webkit-scrollbar{width:2px;}
+#watchers-list::-webkit-scrollbar-thumb{background:#1e1e35;border-radius:2px;}
+.watcher-section-label{font-size:9px;color:#252535;letter-spacing:.08em;text-transform:uppercase;padding:4px 4px 2px;font-family:'IBM Plex Mono',monospace;}
+.watcher-row{display:flex;align-items:center;gap:6px;padding:5px 4px;border-radius:6px;transition:background .1s;}
+.watcher-row:hover{background:#0f0f1a;}
+.watcher-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0;}
+.watcher-avatar.real{background:linear-gradient(135deg,#06b6d4,#3b82f6);}
+.watcher-avatar.bot{background:#1a1a2a;}
+.watcher-avatar.stage{background:linear-gradient(135deg,#e63946,#7c3aed);animation:stagePulse 1.5s infinite;}
+@keyframes stagePulse{0%,100%{box-shadow:0 0 0 0 #e6394633;}50%{box-shadow:0 0 0 4px #e6394622;}}
+.watcher-name{font-size:11px;color:#555;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.watcher-name.real{color:#22d3ee;}
+.watcher-name.stage{color:#f87171;}
+.watcher-badge{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.04em;flex-shrink:0;}
+.wb-real{background:#06b6d414;color:#22d3ee;border:1px solid #06b6d433;}
+.wb-bot{background:#1a1a2a;color:#333;border:1px solid #252535;}
+.wb-stage{background:#e6394614;color:#f87171;border:1px solid #e6394633;}
+.invite-btn{background:none;border:1px solid #7c3aed44;color:#7c3aed;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .15s;display:none;white-space:nowrap;}
+.invite-btn:hover{background:#7c3aed22;}
+.watcher-row:hover .invite-btn{display:block;}
+.remove-stage-btn{background:none;border:1px solid #e6394644;color:#e63946;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;display:none;}
+.watcher-row:hover .remove-stage-btn{display:block;}
+
+/* ── STAGE AREA (viewer cams shown to all) ── */
+#stage-area{position:absolute;top:14px;right:14px;display:flex;flex-direction:column;gap:8px;z-index:25;max-height:60%;overflow-y:auto;}
+.stage-cam{width:200px;height:130px;border-radius:8px;overflow:visible;border:2px solid #e6394644;background:#000;position:relative;box-shadow:0 4px 20px #0009;cursor:move;flex-shrink:0;}
+.stage-cam video{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+.stage-cam-label{position:absolute;bottom:4px;left:6px;font-size:9px;color:#fff9;font-family:'IBM Plex Mono',monospace;background:#0008;padding:1px 5px;border-radius:3px;}
+.cam-resize-handle{position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:#7c3aed;border-radius:3px;cursor:se-resize;z-index:10;opacity:.7;}
+.cam-resize-handle:hover{opacity:1;}
+#cam-overlay{position:absolute;bottom:14px;left:14px;width:280px;height:185px;border-radius:10px;overflow:visible;border:2px solid #7c3aed44;background:#000;display:none;cursor:move;z-index:20;box-shadow:0 4px 24px #0009;}
+#cam-overlay video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);border-radius:8px;}
+
+/* ── STAGE INVITE TOAST ── */
+#stage-invite-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0f0f1a;border:1px solid #7c3aed;border-radius:12px;padding:16px 20px;z-index:9999;display:none;flex-direction:column;gap:10px;min-width:280px;box-shadow:0 8px 40px #0009;}
+#stage-invite-toast .sit-title{font-size:13px;font-weight:700;color:#fff;}
+#stage-invite-toast .sit-sub{font-size:11px;color:#555;}
+#stage-invite-toast .sit-btns{display:flex;gap:8px;}
+.sit-accept{background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;padding:7px 16px;cursor:pointer;font-family:'Syne',sans-serif;}
+.sit-decline{background:none;border:1px solid #333;border-radius:6px;color:#555;font-size:12px;font-weight:700;padding:7px 16px;cursor:pointer;font-family:'Syne',sans-serif;}
+
+/* Reconnect banner */
+#reconnect-banner{position:fixed;top:0;left:0;right:0;background:#e63946;color:#fff;font-size:12px;font-weight:700;text-align:center;padding:6px;z-index:99999;display:none;letter-spacing:.04em;}
+
+/* viewer cannot see streamer controls */
+body.role-viewer #mic-btn,body.role-viewer #cam-btn,body.role-viewer #share-screen-btn,body.role-viewer #stop-share-btn,body.role-viewer #end-btn,body.role-viewer #share-btn{display:none!important;}
+</style>
+</head>
+<body>
+
+<div id="reconnect-banner">⚠ Connection lost — reconnecting…</div>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo"><div class="auth-logo-dot"></div><span class="auth-logo-name">FakeLive</span><span class="auth-logo-beta">v5 MAX</span></div>
+    <div class="auth-tabs">
+      <button class="atab-btn active" id="atab-login" onclick="setAuthTab('login')">Log In</button>
+      <button class="atab-btn" id="atab-register" onclick="setAuthTab('register')">Create Account</button>
+    </div>
+    <div id="login-form">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="field"><label>Username</label><input id="login-username" placeholder="your_username" autocomplete="username"/></div>
+        <div class="field"><label>Password</label><input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password"/></div>
+        <div class="auth-error" id="login-error"></div>
+        <button class="auth-btn" id="login-btn">Log In →</button>
+      </div>
+    </div>
+    <div id="register-form" style="display:none;">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="field"><label>Username</label><input id="reg-username" placeholder="letters, numbers, underscores" maxlength="24" autocomplete="off"/></div>
+        <div class="field"><label>Password</label><input id="reg-password" type="password" placeholder="min 4 characters" autocomplete="new-password"/></div>
+        <div class="field"><label>I want to</label>
+          <select id="reg-role">
+            <option value="viewer">👀 Watch streams (Viewer)</option>
+            <option value="streamer">🎙 Stream (requires admin approval)</option>
+          </select>
+        </div>
+        <div class="auth-error" id="reg-error"></div>
+        <div class="auth-success" id="reg-success" style="display:none;"></div>
+        <button class="auth-btn" id="reg-btn">Create Account →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROOM ENTRY -->
+<div id="room-screen">
+  <div class="room-box">
+    <div class="auth-logo"><div class="auth-logo-dot"></div><span class="auth-logo-name">FakeLive</span></div>
+    <div class="room-user-info">
+      <div class="room-avatar" id="room-avatar">?</div>
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        <span class="room-username" id="room-username-lbl"></span>
+        <span class="room-role-badge" id="room-role-badge"></span>
+      </div>
+      <span class="logout-link" onclick="doLogout()">Log out</span>
+    </div>
+    <div class="field"><label>Room ID</label><input id="room-id-input" placeholder="e.g. mystream (blank = main)" maxlength="32" autocomplete="off"/></div>
+    <div class="field">
+      <label id="room-password-label">Room Password</label>
+      <input id="room-password-input" placeholder="Optional" type="password" maxlength="64" autocomplete="off"/>
+    </div>
+    <div class="auth-error" id="room-error"></div>
+    <button class="auth-btn" id="room-enter-btn">Enter Stream →</button>
+    <div class="auth-note" id="room-note">Choose a room. Leave blank for main.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+  <div id="stream-area">
+    <div id="top-bar">
+      <div id="channel-info">
+        <div id="avatar">S</div>
+        <input id="channel-name" value="your_channel" maxlength="28"/>
+        <div id="live-badge"><div id="live-dot"></div> LIVE</div>
+        <div id="offline-badge">OFFLINE</div>
+        <div id="viewer-count"><div id="viewer-icon"></div> <span id="vcount">0</span> viewers</div>
+      </div>
+      <div id="controls-row">
+        <div id="stream-timer">00:00:00</div>
+        <div id="latency-pill" title="Latency to server"></div>
+        <div id="conn-quality">● GOOD</div>
+        <div id="quality-selector">
+          <label>QUALITY</label>
+          <button class="q-btn" data-q="low">Low</button>
+          <button class="q-btn active" data-q="med">Med</button>
+          <button class="q-btn" data-q="high">High</button>
+        </div>
+        <div id="mic-indicator"><div id="mic-pulse"></div><span>MIC LIVE</span></div>
+        <!-- streamer-only controls: rendered only after role confirmed as streamer -->
+        <button class="ctrl danger" id="leave-stage-btn" style="display:none;" onclick="leaveStage()">🎙 Leave Stage</button>
+      </div>
+    </div>
+
+    <div id="screen-container">
+      <video id="screen-preview" autoplay muted playsinline></video>
+      <video id="viewer-video" disablepictureinpicture playsinline autoplay playsinline></video>
+      <div id="no-screen">
+        <svg width="52" height="52" viewBox="0 0 64 64" fill="none"><rect x="4" y="10" width="56" height="36" rx="4" stroke="#1e1e35" stroke-width="2"/><path d="M22 46L42 46L44 54L20 54Z" stroke="#1e1e35" stroke-width="2" fill="none"/><path d="M26 28L38 22L38 34Z" fill="#1e1e35"/></svg>
+        <p>No screen shared</p>
+
+      </div>
+      <div id="offline-overlay"><div id="offline-pulse"></div><p>Waiting for streamer…</p></div>
+      <div id="cam-overlay">
+        <video id="cam-video" autoplay muted playsinline></video>
+        <div id="cam-label">CAM</div>
+        <button id="cam-close">✕</button>
+        <div class="cam-resize-handle" id="cam-resize"></div>
+      </div>
+      <div id="viewer-cam">
+        <video id="viewer-cam-video" autoplay playsinline></video>
+        <div id="viewer-cam-label">CAM</div>
+      </div>
+      <div id="stream-stats" style="display:none;">
+        <div class="stat-pill">WebRTC <span>P2P</span></div>
+        <div class="stat-pill">Viewers: <span id="peer-count">0</span></div>
+        <div class="stat-pill" id="quality-pill" style="display:none;">Quality: <span id="quality-lbl">Med</span></div>
+        <div class="stat-pill" id="bitrate-pill" style="display:none;">Bitrate: <span id="bitrate-lbl">—</span></div>
+      </div>
+      <div id="reactions-area"></div>
+      <div id="stage-area"></div>
+    </div>
+
+    <div id="stream-title-bar">
+      <input id="stream-title-input" placeholder="Stream title…" maxlength="80" value="Just vibing — come hang 🎮"/>
+      <span class="category-tag" id="cat-tag">Just Chatting</span>
+    </div>
+  </div>
+
+  <div id="chat-panel">
+    <div id="chat-header">Live Chat<div id="real-online-wrap">● <span id="real-online">0</span> online</div></div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-area">
+      <div id="chat-input-row">
+        <input id="chat-input" placeholder="Say something…" maxlength="200"/>
+        <button id="send-btn">➤</button>
+      </div>
+      <div id="emote-row">
+        <button class="emote-btn">😂</button><button class="emote-btn">😮</button>
+        <button class="emote-btn">🔥</button><button class="emote-btn">💯</button>
+        <button class="emote-btn">❤️</button><button class="emote-btn">👑</button>
+        <button class="emote-btn">💀</button><button class="emote-btn">👋</button>
+        <button class="emote-btn">🎉</button><button class="emote-btn">🤣</button>
+      </div>
+    </div>
+    <div id="chat-footer">
+      <span id="msg-count-lbl">0 messages</span>
+      <span id="room-lbl" style="color:#181828;"></span>
+    </div>
+  </div>
+
+  <!-- WATCHERS PANEL -->
+  <div id="watchers-panel">
+    <div id="watchers-header">Viewers <span id="watcher-count">0</span></div>
+    <div id="watchers-list"></div>
+  </div>
+</div>
+
+<!-- STAGE INVITE TOAST -->
+<div id="stage-invite-toast">
+  <div class="sit-title">🎙 You're invited on stage!</div>
+  <div class="sit-sub" id="sit-from">The streamer wants you to join with cam & mic.</div>
+  <div class="sit-btns">
+    <button class="sit-accept" id="sit-accept">Accept</button>
+    <button class="sit-decline" id="sit-decline">Decline</button>
+  </div>
+</div>
+
+<script>
+// ── SESSION ──
+let session = null;
+try { session = JSON.parse(localStorage.getItem('fl_session')); } catch {}
+
+function setAuthTab(t) {
+  document.getElementById('atab-login').className    = 'atab-btn' + (t==='login'?' active':'');
+  document.getElementById('atab-register').className = 'atab-btn' + (t==='register'?' active':'');
+  document.getElementById('login-form').style.display    = t==='login'?'':'none';
+  document.getElementById('register-form').style.display = t==='register'?'':'none';
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.textContent = '';
+  if (!username || !password) { errEl.textContent = 'Fill in all fields.'; return; }
+  btn.disabled = true; btn.textContent = 'Logging in…';
+  try {
+    const r = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username, password }) });
+    const d = await r.json();
+    if (!r.ok) { errEl.textContent = d.error; return; }
+    session = { token: d.token, username: d.username, role: d.role };
+    localStorage.setItem('fl_session', JSON.stringify(session));
+    showRoomScreen();
+  } catch { errEl.textContent = 'Network error. Try again.'; }
+  finally { btn.disabled = false; btn.textContent = 'Log In →'; }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const role     = document.getElementById('reg-role').value;
+  const errEl    = document.getElementById('reg-error');
+  const sucEl    = document.getElementById('reg-success');
+  const btn      = document.getElementById('reg-btn');
+  errEl.textContent = ''; sucEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = 'Fill in all fields.'; return; }
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const r = await fetch('/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username, password, role }) });
+    const d = await r.json();
+    if (!r.ok) { errEl.textContent = d.error; return; }
+    sucEl.textContent = d.message; sucEl.style.display = 'block';
+    btn.textContent = 'Done!';
+    setTimeout(() => { setAuthTab('login'); document.getElementById('login-username').value = username; btn.disabled = false; btn.textContent = 'Create Account →'; sucEl.style.display = 'none'; }, 2500);
+  } catch { errEl.textContent = 'Network error. Try again.'; btn.disabled = false; btn.textContent = 'Create Account →'; }
+}
+
+document.getElementById('login-btn').onclick = doLogin;
+document.getElementById('reg-btn').onclick   = doRegister;
+['login-username','login-password'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); }));
+['reg-username','reg-password'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') doRegister(); }));
+
+function doLogout() {
+  localStorage.removeItem('fl_session'); session = null;
+  wsIntentionalClose = true; if (ws) { try { ws.close(); } catch {} }
+  document.getElementById('room-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showRoomScreen() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('room-screen').style.display = 'flex';
+  document.getElementById('room-avatar').textContent = session.username[0].toUpperCase();
+  document.getElementById('room-username-lbl').textContent = session.username;
+  const badge = document.getElementById('room-role-badge');
+  badge.textContent = session.role; badge.className = 'room-role-badge ' + session.role;
+  const note = document.getElementById('room-note');
+  if (session.role === 'streamer') {
+    note.textContent = 'Set a password to protect your room (optional).';
+    document.getElementById('room-password-label').textContent = 'Room Password (protect your room)';
+  } else {
+    note.textContent = 'Enter the room ID to watch. Leave blank for main.';
+    document.getElementById('room-password-label').textContent = 'Room Password (if required)';
+  }
+}
+
+document.getElementById('room-enter-btn').onclick = doEnterRoom;
+document.getElementById('room-id-input').addEventListener('keydown', e => { if (e.key==='Enter') doEnterRoom(); });
+
+function doEnterRoom() {
+  myRoom = document.getElementById('room-id-input').value.trim() || 'main';
+  myPassword = document.getElementById('room-password-input').value;
+  myUsername = session.username; myRole = session.role;
+  document.getElementById('room-error').textContent = '';
+  connectWS();
+}
+
+if (session) { document.getElementById('auth-screen').style.display = 'none'; showRoomScreen(); }
+
+// ── STATE ──
+let myUsername = '', myRole = 'viewer', myRoom = 'main', myPassword = '';
+let ws = null;
+const peerConnections = {};
+let camStream = null, screenStream = null, micStream = null;
+let streamSec = 0, fakeTimer = null, msgCount = 0;
+let currentQuality = 'med';
+let iceServers = null; // fetched from server
+
+// Fetch ICE servers from server (includes TURN if configured)
+async function fetchIceServers() {
+  try {
+    const r = await fetch('/rtc/ice-servers');
+    const d = await r.json();
+    iceServers = d.iceServers;
+  } catch {
+    // fallback to hardcoded STUN
+    iceServers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+    ];
+  }
+}
+fetchIceServers();
+
+// Gaming-optimized bitrates — higher than Discord defaults for lower latency headroom
+const BITRATE = { low: 8_000_000, med: 15_000_000, high: 25_000_000 };
+const QUALITY_CONSTRAINTS = {
+  low:  { width: 1280, height: 720,  frameRate: 60 },
+  med:  { width: 1920, height: 1080, frameRate: 60 },
+  high: { width: 1920, height: 1080, frameRate: 60 },
+};
+
+
+const NAMES    = ['xXDarkShadow69Xx','pogchamp_queen','itsyaboiKyle','streamlover42','hype_machine99','GachaBrainRot','monkaS_forever','vibe_check_pls','TurboChat2000','lurk_master3000','NotABot_real','clippityclap','TheBestViewer','speedrun_andy','based_viewer','GigaBrain_IQ','pepega_lord','copiumUser','ResidentSleeper','HypeTrain_Nora','FastFingers99','L3gendary_Watch','CloudNine_99','ProViewerXD','SilentLurker42'];
+const BADGES   = [null,null,null,null,null,'sub','sub','sub','mod','vip'];
+const COLORS   = ['#f87171','#fb923c','#facc15','#4ade80','#34d399','#60a5fa','#a78bfa','#f472b6','#67e8f9','#fbbf24'];
+const COMMENTS = ['this is insane bro','KEKW KEKW','first time here already a fan','let\'s gooo 🔥','this stream slaps','OMEGALUL','clip that!!!','F in chat','pog pog pog','monkaS monkaS','W stream','LUL LUL','vibes are immaculate','bro woke up and chose chaos','YOOOOO','ok this one got me','absolute cinema','we are SO back','GG GG GG','W W W W','he\'s NOT going to make it 💀','HOW is this so good','I can\'t stop watching','bro really said that 💀','no way that just happened','I\'m in tears rn 😂','carry harder','POGGERS','this is peak content','NPC behavior fr','real and true'];
+
+const rnd     = a => a[Math.floor(Math.random() * a.length)];
+const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const esc     = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const nowTime = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
+const wsSend  = obj => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify(obj));
+
+function enterApp() {
+  document.getElementById('room-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('avatar').textContent = myUsername[0].toUpperCase();
+  document.getElementById('room-lbl').textContent = 'room: ' + myRoom;
+  setupUI();
+}
+
+function setupUI() {
+  document.body.classList.add('role-' + myRole);
+  if (myRole === 'streamer') {
+    // Inject streamer controls into toolbar — only created for streamer role
+    const toolbar = document.getElementById('controls-row');
+    if (toolbar && !$s('mic-btn')) {
+      toolbar.insertAdjacentHTML('afterbegin', `
+        <button class="ctrl" id="mic-btn">🎤 Mic</button>
+        <button class="ctrl" id="cam-btn">📷 Cam</button>
+        <button class="ctrl" id="share-screen-btn">🖥 Share</button>
+        <button class="ctrl" id="stop-share-btn" style="display:none;">⏹ Stop</button>
+        <button class="ctrl danger" id="end-btn">End Stream</button>
+        <button id="share-btn" style="display:inline-flex;">🖥 Share Screen</button>
+      `);
+      // Bind events now that elements exist
+      $s('mic-btn').onclick          = toggleMic;
+      $s('cam-btn').onclick          = toggleCam;
+      $s('share-screen-btn').onclick = startScreen;
+      $s('stop-share-btn').onclick   = stopScreen;
+      $s('share-btn').onclick        = startScreen;
+      $s('end-btn').onclick          = doEndStream;
+    }
+    ['mic-btn','cam-btn','share-screen-btn','end-btn','share-btn'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'inline-flex'; });
+    document.getElementById('stream-stats').style.display = 'flex';
+    startBitrateEnforcer(); // prevent ABR decay over time
+  } else {
+    document.getElementById('channel-name').readOnly = true;
+    document.getElementById('stream-title-input').readOnly = true;
+    document.getElementById('cat-tag').style.cursor = 'default';
+    document.getElementById('offline-overlay').style.display = 'flex';
+    document.getElementById('quality-selector').style.display = 'flex';
+    document.getElementById('stream-stats').style.display = 'flex';
+    document.getElementById('quality-pill').style.display = 'flex';
+    document.getElementById('bitrate-pill').style.display = 'flex';
+    document.getElementById('conn-quality').style.display = 'flex';
+    document.getElementById('latency-pill').style.display = 'block';
+    startConnectionMonitor();
+    startLatencyMonitor();
+  }
+  setInterval(() => {
+    streamSec++;
+    document.getElementById('stream-timer').textContent =
+      [Math.floor(streamSec/3600), Math.floor((streamSec%3600)/60), streamSec%60].map(n=>String(n).padStart(2,'0')).join(':');
+  }, 1000);
+  startFakeBots();
+}
+
+// ── WEBSOCKET ──
+let wsReconnectDelay = 1000;
+let wsIntentionalClose = false;
+
+function connectWS() {
+  wsIntentionalClose = false;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+
+  let wsPingTimer = null;
+
+  ws.onopen = () => {
+    wsReconnectDelay = 1000;
+    document.getElementById('reconnect-banner').style.display = 'none';
+    wsSend({ type: 'join', roomId: myRoom, password: myPassword, token: session.token });
+    wsPingTimer = setInterval(() => { if (ws.readyState === WebSocket.OPEN) wsSend({ type: 'ping', ts: Date.now() }); }, 20000);
+  };
+
+  ws.onmessage = async e => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    const { type } = msg;
+
+    if (type === 'pong') return;
+    if (type === 'latency_pong') return; // handled by latency monitor
+
+    // Override ICE servers if server sends them
+    if (type === 'ice_servers' && msg.iceServers) { iceServers = msg.iceServers; return; }
+
+    if (type === 'auth_error') { doLogout(); document.getElementById('login-error').textContent = msg.reason; return; }
+
+    if (type === 'joined') {
+      enterApp();
+      // Use server-provided ICE servers if included
+      if (msg.iceServers) iceServers = msg.iceServers;
+      if (myRole === 'viewer') {
+        if (msg.streamerOnline) showViewerOnline(); else showViewerWaiting();
+        if (msg.recentChat) msg.recentChat.forEach(m => renderRealMsg(m));
+        if (msg.meta) {
+          if (msg.meta.channelName) document.getElementById('channel-name').value = msg.meta.channelName;
+          if (msg.meta.title) document.getElementById('stream-title-input').value = msg.meta.title;
+          if (msg.meta.category) document.getElementById('cat-tag').textContent = msg.meta.category;
+        }
+      }
+    }
+
+    if (type === 'wrong_password') {
+      document.getElementById('room-error').textContent = '❌ Wrong room password.';
+      document.getElementById('room-screen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+      wsIntentionalClose = true; ws.close(); return;
+    }
+
+    if (type === 'room_full') {
+      document.getElementById('room-error').textContent = `❌ Room is full (max ${msg.max} viewers).`;
+      document.getElementById('room-screen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+      wsIntentionalClose = true; ws.close(); return;
+    }
+
+    if (type === 'error') { renderSysMsg('⚠ ' + (msg.reason || 'Error')); return; }
+    if (type === 'chat_throttled') { renderThrottledMsg(); return; }
+
+    if (type === 'viewer_count') {
+      document.getElementById('peer-count').textContent = msg.count;
+      document.getElementById('real-online').textContent = msg.count + (myRole==='streamer'?1:0);
+      // vcount is set by updateWatcherList (bots+real total)
+    }
+
+    if (type === 'no_streamer'      && myRole === 'viewer') showViewerWaiting();
+    if (type === 'streamer_online'  && myRole === 'viewer') showViewerOnline();
+    if (type === 'streamer_offline' && myRole === 'viewer') showViewerWaiting();
+
+    if (type === 'viewer_joined' && myRole === 'streamer') { renderSysMsg(`${msg.username} joined 👋`); await createOffer(msg.viewerId); }
+    if (type === 'viewer_left'   && myRole === 'streamer') closePeer(msg.viewerId);
+
+    if (type === 'answer' && myRole === 'streamer') {
+      const pc = peerConnections[msg.viewerId];
+      if (pc && pc.signalingState !== 'stable') await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp)).catch(()=>{});
+    }
+
+    if (type === 'ice_restart_request' && myRole === 'streamer') {
+      const pc = peerConnections[msg.viewerId]; if (!pc) return;
+      try { const offer = await pc.createOffer({ iceRestart: true }); await pc.setLocalDescription(offer); wsSend({ type:'offer', viewerId:msg.viewerId, sdp:pc.localDescription }); }
+      catch (e) { console.warn('ICE restart offer failed:', e); }
+    }
+
+    if (type === 'quality_request' && myRole === 'streamer') await applyQualityToViewer(msg.viewerId, 'high'); // always max for all viewers
+    if (type === 'offer'           && myRole === 'viewer')  await handleOffer(msg.sdp);
+
+    if (type === 'ice') {
+      const pc = myRole === 'streamer' ? peerConnections[msg.from] : peerConnections['streamer'];
+      if (pc && msg.candidate && pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});
+    }
+
+    if (type === 'chat') renderRealMsg(msg);
+    if (type === 'cam_move' && myRole === 'viewer') {
+      const vc = document.getElementById('viewer-cam');
+      if (vc) {
+        const p  = vc.parentElement.getBoundingClientRect();
+        const nx = msg.xp * p.width;
+        const ny = msg.yp * p.height;
+        vc.style.left   = Math.max(0, Math.min(p.width  - vc.offsetWidth,  nx)) + 'px';
+        vc.style.top    = Math.max(0, Math.min(p.height - vc.offsetHeight, ny)) + 'px';
+        vc.style.bottom = 'auto';
+        vc.style.right  = 'auto';
+        if (msg.wp) vc.style.width  = (msg.wp * p.width)  + 'px';
+        if (msg.hp) vc.style.height = (msg.hp * p.height) + 'px';
+      }
+    }
+
+    if (type === 'meta') {
+      if (msg.channelName) document.getElementById('channel-name').value = msg.channelName;
+      if (msg.title)       document.getElementById('stream-title-input').value = msg.title;
+      if (msg.category)    document.getElementById('cat-tag').textContent = msg.category;
+    }
+
+    // ── WATCHER LIST ──
+    if (type === 'watcher_list') {
+      realViewers.clear();
+      msg.viewers.forEach(v => realViewers.set(v.id, { id: v.id, username: v.username, onStage: v.onStage }));
+      updateWatcherList();
+    }
+
+    // ── STAGE MESSAGES ──
+    if (type === 'stage_invite')  { handleStageInvite(msg.from); }
+    if (type === 'stage_response' && myRole === 'streamer') {
+      if (msg.accepted) renderSysMsg(`✅ ${msg.username} accepted stage invite`);
+      else renderSysMsg(`❌ ${msg.username} declined stage invite`);
+    }
+    if (type === 'stage_joined') {
+      const v = realViewers.get(msg.viewerId);
+      if (v) { v.onStage = true; updateWatcherList(); }
+    }
+    if (type === 'stage_left') {
+      const v = realViewers.get(msg.viewerId);
+      if (v) { v.onStage = false; updateWatcherList(); }
+      // clean up cam if viewer
+      const el = document.getElementById('stage-cam-' + msg.viewerId);
+      if (el) el.remove();
+      const ae = document.getElementById('stage-audio-' + msg.viewerId);
+      if (ae) ae.remove();
+    }
+    if (type === 'stage_ended') {
+      // This viewer was removed from stage by streamer
+      if (myStageStream) { myStageStream.getTracks().forEach(t => t.stop()); myStageStream = null; }
+      const el = document.getElementById('stage-cam-self');
+      if (el) el.remove();
+      if (stagePeers['streamer']) { stagePeers['streamer'].close(); delete stagePeers['streamer']; }
+      renderSysMsg('You were removed from stage.');
+      const lsb = document.getElementById('leave-stage-btn');
+      if (lsb) lsb.style.display = 'none';
+    }
+    if (type === 'stage_offer'  && myRole === 'streamer') { await handleStageOffer(msg.sdp, msg.viewerId); }
+    if (type === 'stage_answer' && myRole === 'viewer')   { await handleStageAnswer(msg.sdp); }
+    if (type === 'stage_ice')   { await handleStageIce(msg.candidate, msg.from); }
+
+    if (type === 'kicked' || type === 'rejected') { showBigMessage('⚡','Disconnected', msg.reason||'You were removed.'); wsIntentionalClose=true; ws.onclose=null; ws.close(); }
+    if (type === 'banned')    { showBigMessage('🚫','Account Banned', msg.reason||'Your account has been banned.'); localStorage.removeItem('fl_session'); wsIntentionalClose=true; ws.onclose=null; ws.close(); }
+    if (type === 'ip_banned') {
+      const exp = msg.expiresAt ? `Expires: ${new Date(msg.expiresAt).toLocaleString()}` : 'Permanent.';
+      showBigMessage('🌐','IP Banned', (msg.reason||'Your IP is banned.') + '\n' + exp);
+      wsIntentionalClose=true; ws.onclose=null; ws.close();
+    }
+    if (type === 'stream_ended') {
+      Object.values(peerConnections).forEach(pc=>pc.close());
+      wsIntentionalClose=true; ws.onclose=null; ws.close();
+      // Reset app state and return to room entry screen
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('room-error').textContent = '📺 Stream ended. Enter a room to watch again.';
+      document.getElementById('room-screen').style.display = 'flex';
+      // Clear video elements
+      const vv = document.getElementById('viewer-video'); if (vv) { vv.srcObject=null; vv.style.display='none'; }
+      const vc = document.getElementById('viewer-cam'); if (vc) vc.style.display='none';
+      // Reset watcher list and stage
+      realViewers.clear(); fakeBotNames.clear(); botRoles.clear(); updateWatcherList();
+      clearTimeout(fakeTimer);
+    }
+  };
+
+  ws.onclose = () => {
+    if (wsPingTimer) clearInterval(wsPingTimer);
+    if (wsIntentionalClose || !myRole || !session) return;
+    document.getElementById('reconnect-banner').style.display = 'block';
+    setTimeout(connectWS, wsReconnectDelay);
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, 8000);
+  };
+
+  ws.onerror = () => {};
+}
+
+// ── WEBRTC STREAMER ──
+const screenMediaStream = new MediaStream();
+const camMediaStream    = new MediaStream();
+
+// ── DISCORD-QUALITY CODEC + SDP HELPERS ──
+
+// Safe getter — returns null (no-op) when streamer buttons don't exist (viewer context)
+function $s(id) { return document.getElementById(id); }
+
+// Reorder SDP to prefer a specific codec
+function preferCodec(sdp, type, codec) {
+  const lines = sdp.split('\r\n');
+  const mLineIdx = lines.findIndex(l => l.startsWith(`m=${type}`));
+  if (mLineIdx === -1) return sdp;
+  const codecPayloads = lines
+    .filter(l => l.startsWith('a=rtpmap') && l.toLowerCase().includes(codec.toLowerCase()))
+    .map(l => l.match(/a=rtpmap:(\d+)/)?.[1])
+    .filter(Boolean);
+  if (!codecPayloads.length) return sdp;
+  const mLine = lines[mLineIdx].split(' ');
+  const header = mLine.slice(0, 3);
+  const payloads = mLine.slice(3);
+  const reordered = [...codecPayloads, ...payloads.filter(p => !codecPayloads.includes(p))];
+  lines[mLineIdx] = [...header, ...reordered].join(' ');
+  return lines.join('\r\n');
+}
+
+// Patch Opus audio in SDP: 48kHz stereo, maxaveragebitrate=510kbps, CBR off
+// This is what Discord uses for high-quality audio on screen share
+function patchOpusAudio(sdp) {
+  return sdp.split('\r\n').map(line => {
+    if (line.startsWith('a=fmtp:') && line.includes('opus')) {
+      // Remove existing audio params and replace with Discord-matching ones
+      const base = line.replace(/;?\s*(stereo|sprop-stereo|useinbandfec|maxaveragebitrate|cbr|usedtx)=[^;\s]*/gi, '');
+      return base + ';stereo=1;sprop-stereo=1;useinbandfec=1;maxaveragebitrate=510000';
+    }
+    return line;
+  }).join('\r\n');
+}
+
+async function createOffer(viewerId) {
+  closePeer(viewerId);
+  const servers = iceServers || [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ];
+  const pc = new RTCPeerConnection({
+    iceServers: servers,
+    sdpSemantics: 'unified-plan',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+    iceTransportPolicy: 'all',
+    iceCandidatePoolSize: 0,   // dynamic gathering = faster on gaming networks
+  });
+  peerConnections[viewerId] = pc;
+
+  const screenVideoTrack = screenStream?.getVideoTracks()[0] || null;
+  const screenAudioTrack = getScreenAudioTrack();
+  const camVideoTrack    = camStream?.getVideoTracks()[0]    || null;
+
+  // Set content hint for smoother motion encoding
+  if (screenVideoTrack && 'contentHint' in screenVideoTrack) screenVideoTrack.contentHint = 'motion';
+  if (camVideoTrack    && 'contentHint' in camVideoTrack)    camVideoTrack.contentHint    = 'motion';
+
+  // Force 60fps on the captured track before sending
+  if (screenVideoTrack) {
+    try { await screenVideoTrack.applyConstraints({ frameRate: { exact: 60 } }); } catch(_) {}
+  }
+
+  pc._screenVideoSender = pc.addTrack(screenVideoTrack || createBlackVideoTrack(), screenMediaStream);
+  pc._screenAudioSender = pc.addTrack(screenAudioTrack || createSilentAudioTrack(), screenMediaStream);
+  pc._camVideoSender    = pc.addTrack(camVideoTrack    || createBlackVideoTrack(), camMediaStream);
+
+  pc.onicecandidate = e => { if (e.candidate) wsSend({ type:'ice', to:viewerId, candidate:e.candidate.toJSON() }); };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') attemptIceRestart(viewerId);
+    if (pc.connectionState === 'closed') closePeer(viewerId);
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    if (pc.iceConnectionState === 'disconnected') {
+      pc._iceTimer = setTimeout(() => { if (['disconnected','failed'].includes(pc.iceConnectionState)) attemptIceRestart(viewerId); }, 1000);
+    } else if (['connected','completed'].includes(pc.iceConnectionState)) {
+      clearTimeout(pc._iceTimer);
+    }
+  };
+
+  const offer = await pc.createOffer({ voiceActivityDetection: false });
+  // Prefer H264 for hardware encoding (NVENC/AMF/QuickSync) — VP8 is CPU-only.
+  // Fall back to VP8 if H264 unavailable. Patch audio to Opus stereo 510kbps.
+  if (offer.sdp) {
+    offer.sdp = preferCodec(offer.sdp, 'video', 'H264');
+    offer.sdp = preferCodec(offer.sdp, 'video', 'VP8'); // fallback ordering
+    offer.sdp = patchOpusAudio(offer.sdp);
+    offer.sdp = addNackFir(offer.sdp);
+    offer.sdp = patchH264Fmtp(offer.sdp);
+  }
+  await pc.setLocalDescription(offer);
+  await applyQualityToViewer(viewerId, 'high'); // always max quality for all viewers
+  wsSend({ type:'offer', viewerId, sdp:pc.localDescription });
+}
+
+async function attemptIceRestart(viewerId) {
+  const pc = peerConnections[viewerId];
+  if (!pc || pc.connectionState === 'closed') return;
+  try {
+    const offer = await pc.createOffer({ iceRestart: true });
+    await pc.setLocalDescription(offer);
+    wsSend({ type:'offer', viewerId, sdp:pc.localDescription });
+  } catch {
+    closePeer(viewerId);
+    await createOffer(viewerId);
+  }
+}
+
+// Add NACK + PLI + FIR feedback — enables retransmission of lost packets for smoother game video
+function addNackFir(sdp) {
+  return sdp.split('\r\n').map(line => {
+    // Add nack/pli/fir to video rtcp-fb lines if not already present
+    if (line.startsWith('a=rtcp-fb:') && !line.includes('nack')) {
+      return line + '\r\na=rtcp-fb:' + line.split(':')[1].split(' ')[0] + ' nack\r\na=rtcp-fb:' + line.split(':')[1].split(' ')[0] + ' nack pli\r\na=rtcp-fb:' + line.split(':')[1].split(' ')[0] + ' ccm fir';
+    }
+    return line;
+  }).join('\r\n');
+}
+
+// Patch H264 fmtp: high-profile + packetization-mode=1 for better game streaming
+function patchH264Fmtp(sdp) {
+  return sdp.split('\r\n').map(line => {
+    if (line.startsWith('a=fmtp:') && line.includes('profile-level-id')) {
+      return line
+        .replace(/profile-level-id=[0-9a-fA-F]+/, 'profile-level-id=640028')
+        .replace(/packetization-mode=\d/, 'packetization-mode=1');
+    }
+    return line;
+  }).join('\r\n');
+}
+
+// Re-enforce bitrate every 3s — prevents browser ABR from silently decaying quality over time
+function startBitrateEnforcer() {
+  setInterval(() => {
+    Object.values(peerConnections).forEach(async pc => {
+      if (!pc || pc.connectionState !== 'connected') return;
+      const sender = pc._screenVideoSender; if (!sender) return;
+      try {
+        const params = sender.getParameters();
+        if (!params.encodings?.length) return;
+        const br = BITRATE['high'];
+        if (params.encodings[0].maxBitrate !== br) {
+          params.encodings[0].maxBitrate = br;
+          params.encodings[0].minBitrate = br;
+          params.degradationPreference = 'maintain-framerate';
+          await sender.setParameters(params);
+        }
+      } catch(_) {}
+    });
+  }, 3000);
+}
+
+async function applyQualityToViewer(viewerId, quality) {
+  const pc = peerConnections[viewerId]; if (!pc) return;
+  const sender = pc._screenVideoSender; if (!sender) return;
+  try {
+    const params = sender.getParameters();
+    if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+    const br = BITRATE[quality] || BITRATE.med;
+    params.encodings[0].maxBitrate      = br;
+    params.encodings[0].minBitrate      = br;    // CBR: equal min/max prevents browser ABR decay
+    params.encodings[0].maxFramerate    = 60;    // always 60 — never drop below
+    params.encodings[0].scaleResolutionDownBy = 1;  // NEVER scale resolution down
+    params.encodings[0].networkPriority = 'high';
+    params.encodings[0].priority        = 'high';
+    try { params.encodings[0].scalabilityMode = 'L1T3'; } catch(_) {}
+    params.degradationPreference        = 'maintain-framerate';
+    await sender.setParameters(params);
+  } catch (e) { console.warn('setParameters:', e); }
+  // Also apply to cam sender if active
+  const camSender = pc._camVideoSender; if (!camSender) return;
+  try {
+    const cp = camSender.getParameters();
+    if (!cp.encodings || !cp.encodings.length) cp.encodings = [{}];
+    cp.encodings[0].maxBitrate   = 1_000_000;
+    cp.encodings[0].maxFramerate = 30;
+    cp.degradationPreference     = 'maintain-framerate';
+    await camSender.setParameters(cp);
+  } catch {}
+}
+
+function getScreenAudioTrack() {
+  return micStream?.getAudioTracks()[0] || screenStream?.getAudioTracks()[0] || null;
+}
+
+function createBlackVideoTrack() {
+  const c = Object.assign(document.createElement('canvas'), { width: 2, height: 2 });
+  c.getContext('2d').fillRect(0,0,2,2);
+  return c.captureStream(1).getVideoTracks()[0];
+}
+function createSilentAudioTrack() {
+  return new AudioContext().createMediaStreamDestination().stream.getAudioTracks()[0];
+}
+
+async function replaceTrackAll(key, newTrack) {
+  const fallback = key === '_screenAudioSender' ? createSilentAudioTrack() : createBlackVideoTrack();
+  for (const pc of Object.values(peerConnections)) {
+    const s = pc[key]; if (s) await s.replaceTrack(newTrack || fallback).catch(()=>{});
+  }
+}
+
+function closePeer(viewerId) {
+  const pc = peerConnections[viewerId];
+  if (pc) { clearTimeout(pc._iceTimer); pc.close(); delete peerConnections[viewerId]; }
+}
+
+// ── WEBRTC VIEWER ──
+let _poorSamples = 0;
+let _lastBytesReceived = 0;
+let _lastBytesTime = 0;
+
+async function handleOffer(sdp) {
+  let pc = peerConnections['streamer'];
+  if (!pc || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
+    const servers = iceServers || [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ];
+    pc = new RTCPeerConnection({
+      iceServers: servers,
+      sdpSemantics: 'unified-plan',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+      iceTransportPolicy: 'all',
+      iceCandidatePoolSize: 0,
+    });
+    peerConnections['streamer'] = pc;
+
+    const screenVideoEl = document.getElementById('viewer-video');
+    const camVideoEl    = document.getElementById('viewer-cam-video');
+    const camOverlay    = document.getElementById('viewer-cam');
+
+    let audioEl = document.getElementById('viewer-audio');
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = 'viewer-audio'; audioEl.autoplay = true; audioEl.style.display = 'none';
+      document.body.appendChild(audioEl);
+    }
+    const audioStream   = new MediaStream();
+    audioEl.srcObject   = audioStream;
+    const screenStream_ = new MediaStream();
+    const camStream_    = new MediaStream();
+    screenVideoEl.srcObject = screenStream_;
+    camVideoEl.srcObject    = camStream_;
+
+    const streamMap = {};
+
+    pc.ontrack = e => {
+      const stream = e.streams[0]; if (!stream) return;
+      const track  = e.track;
+      // Set jitter buffer to minimum — Discord-style low-latency playback
+      if (e.receiver && 'jitterBufferTarget' in e.receiver) {
+        try { e.receiver.jitterBufferTarget = 0; } catch(_) {}
+      }
+      // Minimize playout delay — critical for low-latency game viewing
+      if (e.receiver && 'playoutDelayHint' in e.receiver) {
+        try { e.receiver.playoutDelayHint = 0; } catch(_) {}
+      }
+      if (!streamMap[stream.id]) streamMap[stream.id] = Object.keys(streamMap).length === 0 ? 'screen' : 'cam';
+      const role = streamMap[stream.id];
+      if (track.kind === 'audio') { audioStream.getAudioTracks().forEach(t => audioStream.removeTrack(t)); audioStream.addTrack(track); return; }
+      if (role === 'screen') {
+        screenStream_.getVideoTracks().forEach(t => screenStream_.removeTrack(t)); screenStream_.addTrack(track);
+        screenVideoEl.style.display = 'block';
+        // Minimize decode buffer — no extra buffering for AirPlay or casting
+        try { screenVideoEl.disableRemotePlayback = true; } catch(_) {}
+        try { if (screenVideoEl.requestVideoFrameCallback) screenVideoEl.requestVideoFrameCallback(()=>{}); } catch(_){}
+        document.getElementById('no-screen').style.display    = 'none';
+        document.getElementById('offline-overlay').style.display = 'none';
+      } else {
+        camStream_.getVideoTracks().forEach(t => camStream_.removeTrack(t)); camStream_.addTrack(track);
+        camOverlay.style.display = 'block';
+        track.onmute   = () => { camOverlay.style.display = 'none'; };
+        track.onunmute = () => { camOverlay.style.display = 'block'; };
+      }
+    };
+
+    pc.onicecandidate = e => { if (e.candidate) wsSend({ type:'ice', to:'streamer', candidate:e.candidate.toJSON() }); };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') { screenVideoEl.style.display = 'block'; updateConnQuality('good'); }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'disconnected') {
+        updateConnQuality('poor');
+        pc._iceRestartTimer = setTimeout(() => {
+          if (['disconnected','failed'].includes(pc.iceConnectionState)) wsSend({ type:'ice_restart_request' });
+        }, 1000);
+      } else if (pc.iceConnectionState === 'failed') {
+        updateConnQuality('poor'); wsSend({ type:'ice_restart_request' });
+      } else if (['connected','completed'].includes(pc.iceConnectionState)) {
+        clearTimeout(pc._iceRestartTimer); _poorSamples = 0;
+      }
+    };
+  }
+
+  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  wsSend({ type:'answer', sdp:pc.localDescription });
+}
+
+// ── CONNECTION QUALITY MONITOR ──
+let _lastAutoDowngrade = 0; // cooldown tracker
+function startConnectionMonitor() {
+  setInterval(async () => {
+    const pc = peerConnections['streamer'];
+    if (!pc || pc.connectionState !== 'connected') return;
+    try {
+      const stats = await pc.getStats();
+      let inboundVideo = null;
+      stats.forEach(s => { if (s.type === 'inbound-rtp' && s.kind === 'video') inboundVideo = s; });
+      if (!inboundVideo) return;
+
+      const lost     = inboundVideo.packetsLost    || 0;
+      const received = inboundVideo.packetsReceived || 1;
+      const lossRate = lost / (lost + received);
+      const jitter   = inboundVideo.jitter         || 0;
+      const freezes  = inboundVideo.freezeCount    || 0;
+
+      // Bitrate calculation
+      const now   = Date.now();
+      const bytes = inboundVideo.bytesReceived || 0;
+      if (_lastBytesTime) {
+        const dt  = (now - _lastBytesTime) / 1000;
+        const bps = ((bytes - _lastBytesReceived) * 8) / dt;
+        const kbps = Math.round(bps / 1000);
+        document.getElementById('bitrate-lbl').textContent = kbps > 1000 ? `${(kbps/1000).toFixed(1)} Mbps` : `${kbps} kbps`;
+      }
+      _lastBytesReceived = bytes; _lastBytesTime = now;
+
+      // Get RTT from candidate-pair stats for more accurate WiFi assessment
+      let rtt = 0;
+      stats.forEach(s => { if (s.type === 'candidate-pair' && s.state === 'succeeded' && s.currentRoundTripTime) rtt = s.currentRoundTripTime; });
+
+      // Gaming thresholds — more aggressive than video call defaults
+      const isBad  = lossRate > 0.05 || (jitter > 0.05 && rtt > 0.1) || freezes > 2;
+      const isFair = !isBad && (lossRate > 0.02 || jitter > 0.03 || rtt > 0.07);
+      const isGood = !isBad && !isFair;
+
+      if (isBad)  { _poorSamples++; updateConnQuality('poor'); }
+      else if (isFair) { _poorSamples = Math.max(0, _poorSamples - 1); updateConnQuality('fair'); }
+      else        { _poorSamples = Math.max(0, _poorSamples - 2); updateConnQuality('good'); }
+
+      const cooldownPassed = (now - _lastAutoDowngrade) > 30000;
+
+      // Auto-DOWNGRADE: 8 bad samples (24s) for gaming responsiveness
+      if (_poorSamples >= 8 && currentQuality !== 'low' && cooldownPassed) {
+        _lastAutoDowngrade = now;
+        _poorSamples = 0;
+        applyQualityRequest(currentQuality === 'high' ? 'med' : 'low');
+      }
+
+      // Auto-UPGRADE: if connection has been consistently good for 20 samples (80s), bump up
+      if (_poorSamples === 0 && isGood && cooldownPassed) {
+        if (currentQuality === 'low') { _lastAutoDowngrade = now; applyQualityRequest('med'); }
+        else if (currentQuality === 'med') { _lastAutoDowngrade = now; applyQualityRequest('high'); }
+      }
+    } catch {}
+  }, 1000); // check every 1s for gaming responsiveness
+}
+
+// ── LATENCY MONITOR ──
+function startLatencyMonitor() {
+  setInterval(() => {
+    if (ws?.readyState !== WebSocket.OPEN) return;
+    const t = Date.now();
+    wsSend({ type: 'latency_ping', ts: t });
+    // measure round-trip
+    const handler = e => {
+      try {
+        const m = JSON.parse(e.data);
+        if (m.type === 'latency_pong' && m.ts === t) {
+          const rtt = Date.now() - t;
+          const el  = document.getElementById('latency-pill');
+          el.textContent = `${rtt}ms`;
+          el.style.color = rtt < 80 ? '#4ade80' : rtt < 200 ? '#fbbf24' : '#f87171';
+          ws.removeEventListener('message', handler);
+        }
+      } catch {}
+    };
+    ws.addEventListener('message', handler);
+    setTimeout(() => ws.removeEventListener('message', handler), 3000);
+  }, 5000);
+}
+
+function updateConnQuality(level) {
+  const el = document.getElementById('conn-quality'); if (!el) return;
+  el.className = level;
+  el.id = 'conn-quality';
+  el.classList.add(level);
+  el.textContent = { good:'● GOOD', fair:'◐ FAIR', poor:'○ POOR' }[level] || '● GOOD';
+  el.style.display = 'flex';
+}
+
+function applyQualityRequest(quality) {
+  currentQuality = quality;
+  document.querySelectorAll('.q-btn').forEach(b => b.classList.toggle('active', b.dataset.q === quality));
+  document.getElementById('quality-lbl').textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
+  wsSend({ type:'quality_request', quality });
+}
+
+document.querySelectorAll('.q-btn').forEach(btn => {
+  btn.onclick = () => { if (myRole !== 'viewer') return; applyQualityRequest(btn.dataset.q); };
+});
+
+function showViewerOnline() {
+  document.getElementById('offline-overlay').style.display = 'none';
+  document.getElementById('live-badge').style.display = 'flex';
+  document.getElementById('offline-badge').style.display = 'none';
+  wsSend({ type:'quality_request', quality:currentQuality });
+}
+function showViewerWaiting() {
+  const pc = peerConnections['streamer']; if (pc) { pc.close(); delete peerConnections['streamer']; }
+  document.getElementById('offline-overlay').style.display = 'flex';
+  document.getElementById('viewer-video').style.display = 'none';
+  document.getElementById('viewer-video').srcObject = null;
+  document.getElementById('viewer-cam').style.display = 'none';
+  document.getElementById('no-screen').style.display = 'flex';
+  document.getElementById('live-badge').style.display = 'none';
+  document.getElementById('offline-badge').style.display = 'flex';
+  updateConnQuality('good');
+  document.getElementById('conn-quality').style.display = 'none';
+  document.getElementById('latency-pill').style.display = 'none';
+  document.getElementById('bitrate-lbl').textContent = '—';
+  _lastBytesReceived = 0; _lastBytesTime = 0;
+}
+
+function showBigMessage(icon, title, sub) {
+  let el = document.getElementById('big-msg');
+  if (!el) { el = document.createElement('div'); el.id='big-msg'; el.className='full-overlay'; document.getElementById('screen-container').appendChild(el); }
+  el.innerHTML = `<div class="icon">${icon}</div><div class="title" style="color:#fff;">${esc(title)}</div><div class="sub">${esc(sub)}</div>`;
+  el.style.display = 'flex';
+}
+
+// ── SCREEN SHARE ──
+async function startScreen() {
+  try {
+    const q = QUALITY_CONSTRAINTS[currentQuality];
+    screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        width: { exact: q.width },
+        height: { exact: q.height },
+        frameRate: { exact: 60 },
+        displaySurface: 'monitor',
+        logicalSurface: true,
+        cursor: 'always',
+      },
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: 48000,
+        channelCount: 2,
+        latency: 0,
+      },
+      systemAudio: 'include',
+      selfBrowserSurface: 'include',
+      surfaceSwitching: 'include',
+    }).catch(() =>
+      // Fallback: ideal constraints if exact fails (some displays/browsers reject exact)
+      navigator.mediaDevices.getDisplayMedia({
+        video: { width: { ideal: q.width }, height: { ideal: q.height }, frameRate: { ideal: 60, max: 60 }, displaySurface: 'monitor', cursor: 'always' },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      })
+    );
+    screenStream.getVideoTracks().forEach(t => { if ('contentHint' in t) t.contentHint = 'motion'; });
+    document.getElementById('screen-preview').srcObject = screenStream;
+    document.getElementById('screen-preview').style.display = 'block';
+    document.getElementById('no-screen').style.display = 'none';
+    $s('share-screen-btn').style.display = 'none';
+    $s('stop-share-btn').style.display = 'inline-flex';
+    await replaceTrackAll('_screenVideoSender', screenStream.getVideoTracks()[0]);
+    await replaceTrackAll('_screenAudioSender', getScreenAudioTrack());
+    Object.keys(peerConnections).forEach(vid => applyQualityToViewer(vid, 'high')); // max for all
+    screenStream.getVideoTracks()[0].onended = stopScreen;
+  } catch (e) { if (e.name !== 'NotAllowedError') console.warn('Screen share error:', e); }
+}
+
+async function stopScreen() {
+  if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
+  document.getElementById('screen-preview').srcObject = null;
+  document.getElementById('screen-preview').style.display = 'none';
+  document.getElementById('no-screen').style.display = 'flex';
+  $s('share-screen-btn').style.display = 'inline-flex';
+  $s('stop-share-btn').style.display = 'none';
+  await replaceTrackAll('_screenVideoSender', null);
+  await replaceTrackAll('_screenAudioSender', getScreenAudioTrack());
+}
+// Set low-latency playback hints on all video elements — reduces viewer buffer delay
+// This matches Discord's viewer-side approach: minimize buffer, accept slightly more jitter
+(function() {
+  ['viewer-video', 'screen-preview'].forEach(id => {
+    const v = document.getElementById(id);
+    if (!v) return;
+    v.setAttribute('playsinline', '');
+    // Lower buffer via MediaSource where available — otherwise rely on autoplay
+    // The key is disableRemotePlayback which stops browser from buffering extra for AirPlay etc.
+    try { v.disableRemotePlayback = true; } catch(_) {}
+  });
+})();
+
+
+// ── CAMERA ──
+async function toggleCam() {
+  const overlay = document.getElementById('cam-overlay');
+  if (camStream) {
+    camStream.getTracks().forEach(t=>t.stop()); camStream = null;
+    overlay.style.display = 'none';
+    $s('cam-btn').classList.remove('active-btn');
+    await replaceTrackAll('_camVideoSender', null); return;
+  }
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60} }, audio:false });
+    document.getElementById('cam-video').srcObject = camStream;
+    document.getElementById('cam-label').textContent = myUsername.toUpperCase();
+    overlay.style.display = 'block';
+    $s('cam-btn').classList.add('active-btn');
+    await replaceTrackAll('_camVideoSender', camStream.getVideoTracks()[0]);
+  } catch (e) { alert('Camera error: ' + e.message); }
+}
+
+// ── MIC ──
+async function toggleMic() {
+  const btn = $s('mic-btn');
+  const ind = document.getElementById('mic-indicator');
+  if (micStream) {
+    micStream.getAudioTracks().forEach(t=>t.stop()); micStream = null;
+    btn.classList.remove('active-btn'); btn.textContent = '🎤 Mic';
+    ind.style.display = 'none';
+    await replaceTrackAll('_screenAudioSender', getScreenAudioTrack()); return;
+  }
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true, sampleRate:48000, autoGainControl:true, channelCount:2 }, video:false });
+    btn.classList.add('active-btn'); btn.textContent = '🎤 Mic On';
+    ind.style.display = 'flex';
+    await replaceTrackAll('_screenAudioSender', micStream.getAudioTracks()[0]);
+  } catch (e) { alert('Mic error: ' + e.message); }
+}
+
+// ── DRAG + RESIZE HELPER ──
+function makeDraggableResizable(el, resizeHandle, onMoveEnd, minW=120, minH=80, maxW=null, maxH=null) {
+  let drag=false, resizing=false, ox=0, oy=0, rsx=0, rsy=0, rsw=0, rsh=0;
+  el.addEventListener('mousedown', e => {
+    if (e.target === resizeHandle || e.target.id==='cam-close') return;
+    drag=true; ox=e.clientX-el.offsetLeft; oy=e.clientY-el.offsetTop; el.style.transition='none';
+  });
+  if (resizeHandle) resizeHandle.addEventListener('mousedown', e => {
+    e.stopPropagation(); resizing=true;
+    rsx=e.clientX; rsy=e.clientY;
+    rsw=el.offsetWidth; rsh=el.offsetHeight;
+  });
+  document.addEventListener('mousemove', e => {
+    if (drag) {
+      const p = el.parentElement.getBoundingClientRect();
+      const nx = Math.max(0, Math.min(p.width - el.offsetWidth, e.clientX - ox));
+      const ny = Math.max(0, Math.min(p.height - el.offsetHeight, e.clientY - oy));
+      el.style.left = nx+'px'; el.style.top = ny+'px'; el.style.bottom='auto'; el.style.right='auto';
+    }
+    if (resizing) {
+      const nw = Math.max(minW, rsw + (e.clientX - rsx));
+      const nh = Math.max(minH, rsh + (e.clientY - rsy));
+      el.style.width  = (maxW ? Math.min(maxW, nw) : nw) + 'px';
+      el.style.height = (maxH ? Math.min(maxH, nh) : nh) + 'px';
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (drag) {
+      drag=false; el.style.transition='box-shadow .15s';
+      if (onMoveEnd) onMoveEnd();
+    }
+    if (resizing) {
+      resizing=false;
+      if (onMoveEnd) onMoveEnd();
+    }
+  });
+}
+
+// draggable+resizable streamer cam — broadcasts position to viewers on drag end
+(() => {
+  const el = document.getElementById('cam-overlay');
+  const rh = document.getElementById('cam-resize');
+  makeDraggableResizable(el, rh, () => {
+    if (myRole !== 'streamer') return;
+    const p = el.parentElement.getBoundingClientRect();
+    wsSend({ type: 'cam_move', xp: parseFloat(el.style.left)/p.width, yp: parseFloat(el.style.top)/p.height, wp: el.offsetWidth/p.width, hp: el.offsetHeight/p.height });
+  }, 120, 80, 280, 185);
+})();
+
+// ── END STREAM ──
+function doEndStream() {
+  if (!confirm('End the stream? All viewers will be disconnected.')) return;
+  wsSend({ type:'end_stream' });
+  stopScreen();
+  if (camStream) toggleCam();
+  if (micStream) toggleMic();
+  clearTimeout(fakeTimer);
+  Object.keys(peerConnections).forEach(closePeer);
+  Object.keys(stagePeers).forEach(id => { try { stagePeers[id].close(); } catch{} delete stagePeers[id]; });
+  document.querySelectorAll('[id^="stage-cam-"],[id^="stage-audio-"]').forEach(el => el.remove());
+  if (myStageStream) { myStageStream.getTracks().forEach(t => t.stop()); myStageStream = null; }
+  wsIntentionalClose = true; if (ws) { try { ws.close(); } catch {} }
+  myRole = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('room-screen').style.display = 'flex';
+  document.getElementById('room-error').textContent = '📺 Stream ended.';
+}
+
+// ── CHAT ──
+function renderRealMsg(m) {
+  const chatEl = document.getElementById('chat-messages');
+  const isOwn  = m.username === myUsername && !m.system;
+  const div    = document.createElement('div');
+  div.className = 'chat-msg' + (m.system?' system-msg':isOwn?' own-msg':' real-msg');
+  let badge = m.role==='streamer' ? '<span class="msg-badge badge-streamer">host</span>' : (!m.system ? '<span class="msg-badge badge-real">real</span>' : '');
+  div.innerHTML = `<div class="msg-meta">${badge}<span class="msg-name" style="color:${m.system?'#4ade8066':isOwn?'#a78bfa':'#22d3ee'}">${m.system?'':esc(m.username)}</span><span class="msg-time">${m.time||nowTime()}</span></div><div class="msg-text">${esc(m.text||'')}</div>`;
+  chatEl.appendChild(div); msgCount++;
+  document.getElementById('msg-count-lbl').textContent = msgCount + ' messages';
+  while (chatEl.children.length > 200) chatEl.removeChild(chatEl.firstChild);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  spawnReaction();
+}
+
+function renderSysMsg(text) { renderRealMsg({ system:true, text, time:nowTime() }); }
+
+function renderThrottledMsg() {
+  const chatEl = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg throttled-msg';
+  div.innerHTML = `<div class="msg-text" style="color:#fbbf2477;font-style:italic;">⚡ Slow down a bit!</div>`;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  setTimeout(() => div.remove(), 2000);
+}
+
+function renderFakeMsg(name, text, color, badge) {
+  // Track this bot's role for the watcher list
+  if (badge) botRoles.set(name, badge); else if (!botRoles.has(name)) botRoles.set(name, null);
+  const chatEl = document.getElementById('chat-messages');
+  const div = document.createElement('div'); div.className = 'chat-msg';
+  let bh = badge==='mod'?'<span class="msg-badge badge-mod">mod</span>':badge==='sub'?'<span class="msg-badge badge-sub">ELITE</span>':badge==='vip'?'<span class="msg-badge badge-vip">vip</span>':'';
+  div.innerHTML = `<div class="msg-meta">${bh}<span class="msg-name" style="color:${color}">${esc(name)}</span><span class="msg-time">${nowTime()}</span></div><div class="msg-text">${esc(text)}</div>`;
+  chatEl.appendChild(div); msgCount++;
+  document.getElementById('msg-count-lbl').textContent = msgCount + ' messages';
+  while (chatEl.children.length > 200) chatEl.removeChild(chatEl.firstChild);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  spawnReaction();
+}
+
+function spawnReaction() {
+  if (Math.random() > .4) return;
+  const el = document.createElement('div'); el.className = 'reaction-float';
+  el.textContent = rnd(['😂','🔥','💯','😮','❤️','🎉','👑','💀']);
+  el.style.left = randInt(0,18)+'px';
+  document.getElementById('reactions-area').appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim(); if (!text) return;
+  wsSend({ type:'chat', text }); input.value = '';
+}
+document.getElementById('send-btn').onclick     = sendChat;
+document.getElementById('chat-input').onkeydown = e => { if (e.key==='Enter') sendChat(); };
+document.querySelectorAll('.emote-btn').forEach(btn => {
+  btn.onclick = () => { document.getElementById('chat-input').value += btn.textContent; document.getElementById('chat-input').focus(); };
+});
+
+// ── FAKE BOTS ──
+function startFakeBots() {
+  // Seed initial fake bots in watcher list (random subset of NAMES)
+  const initialBots = [...NAMES].sort(() => Math.random() - .5).slice(0, randInt(6, 14));
+  initialBots.forEach(n => { fakeBotNames.add(n); if (!botRoles.has(n)) botRoles.set(n, rnd(BADGES)); });
+  updateWatcherList();
+
+  // Occasionally add/remove bots to simulate churn
+  setInterval(() => {
+    if (Math.random() < .4 && fakeBotNames.size < 20) {
+      const available = NAMES.filter(n => !fakeBotNames.has(n));
+      if (available.length) {
+        const name = rnd(available);
+        fakeBotNames.add(name);
+        if (!botRoles.has(name)) botRoles.set(name, rnd(BADGES));
+        updateWatcherList();
+      }
+    } else if (Math.random() < .2 && fakeBotNames.size > 4) {
+      const arr = [...fakeBotNames];
+      fakeBotNames.delete(rnd(arr)); updateWatcherList();
+    }
+  }, 8000);
+
+  const next = () => {
+    fakeTimer = setTimeout(() => {
+      const activeBots = [...fakeBotNames];
+      if (activeBots.length) {
+        const name = rnd(activeBots);
+        const role = botRoles.get(name) || null;
+        renderFakeMsg(name, rnd(COMMENTS), rnd(COLORS), role);
+      }
+      next();
+    }, randInt(900, 2800));
+  };
+  next();
+}
+
+// ── META SYNC ──
+function broadcastMeta() { wsSend({ type:'meta', channelName:document.getElementById('channel-name').value, title:document.getElementById('stream-title-input').value, category:document.getElementById('cat-tag').textContent }); }
+document.getElementById('channel-name').oninput = function() { document.getElementById('avatar').textContent=(this.value[0]||'S').toUpperCase(); broadcastMeta(); };
+document.getElementById('stream-title-input').oninput = broadcastMeta;
+const cats = ['Just Chatting','Gaming','IRL','Music','Art','Coding','Cooking','Sports','Travel','Tech','Finance','Education'];
+let catIdx = 0;
+document.getElementById('cat-tag').onclick = function() { if (myRole!=='streamer') return; catIdx=(catIdx+1)%cats.length; this.textContent=cats[catIdx]; broadcastMeta(); };
+
+// ── WATCHERS LIST ──
+const realViewers = new Map();   // id -> { username, onStage }
+const fakeBotNames = new Set();  // names of currently shown fake bots in watcher list
+const botRoles = new Map();       // name -> badge role ('mod','sub','vip', or null)
+
+function updateWatcherList() {
+  const list   = document.getElementById('watchers-list');
+  const countEl = document.getElementById('watcher-count');
+  if (!list) return;
+
+  const realArr  = [...realViewers.values()].sort((a,b) => (b.onStage?1:0)-(a.onStage?1:0));
+  const botArr   = [...fakeBotNames];
+  const totalCount = realArr.length + botArr.length;
+  countEl.textContent = totalCount;
+  const vcountEl = document.getElementById('vcount');
+  if (vcountEl) vcountEl.textContent = totalCount;
+
+  let html = '';
+
+  // ── REAL section ──
+  if (realArr.length > 0) {
+    html += '<div class="watcher-section-label">⭐ Mod (' + realArr.length + ')</div>';
+    realArr.forEach(v => {
+      const isStage = v.onStage;
+      const canInvite = myRole === 'streamer' && !isStage;
+      const canRemove = myRole === 'streamer' && isStage;
+      html += `<div class="watcher-row" data-id="${esc(v.id)}">
+        <div class="watcher-avatar ${isStage?'stage':'real'}">${esc(v.username[0]).toUpperCase()}</div>
+        <span class="watcher-name ${isStage?'stage':'real'}">${esc(v.username)}</span>
+        <span class="watcher-badge ${isStage?'wb-stage':'wb-real'}">${isStage?'STAGE':'MOD'}</span>
+        ${canInvite ? `<button class="invite-btn" onclick="inviteToStage('${esc(v.id)}','${esc(v.username)}')">Invite</button>` : ''}
+        ${canRemove ? `<button class="remove-stage-btn" onclick="removeFromStage('${esc(v.id)}')">✕</button>` : ''}
+      </div>`;
+    });
+  }
+
+  // ── BOTS section ──
+  if (botArr.length > 0) {
+    html += '<div class="watcher-section-label" style="margin-top:8px;">👁 Viewers (' + botArr.length + ')</div>';
+    botArr.forEach(name => {
+      const role = botRoles.get(name);
+      let badgeHtml = '';
+      if (role === 'sub') badgeHtml = '<span class="watcher-badge" style="background:#7c3aed14;color:#a78bfa;border:1px solid #7c3aed33;">ELITE</span>';
+      else if (role === 'vip') badgeHtml = '<span class="watcher-badge" style="background:#d9770614;color:#fbbf24;border:1px solid #d9770633;">VIP</span>';
+      // no badge html for plain viewer — they show nothing (no tag)
+      html += `<div class="watcher-row">
+        <div class="watcher-avatar bot">${name[0].toUpperCase()}</div>
+        <span class="watcher-name">${esc(name)}</span>
+        ${badgeHtml}
+      </div>`;
+    });
+  }
+
+  if (!html) html = '<div style="font-size:11px;color:#1a1a2a;text-align:center;padding:20px 0;">No viewers yet</div>';
+  list.innerHTML = html;
+}
+
+// Server sends real viewer list on join/leave
+// Handled in ws.onmessage — add:
+// type === 'watcher_list' -> update realViewers map
+
+// ── STAGE SYSTEM ──
+const stagePeers = {};   // viewerId -> RTCPeerConnection (streamer side)
+let myStageStream = null; // viewer's own cam+mic stream
+
+// Streamer invites a viewer
+function inviteToStage(viewerId, username) {
+  if (myRole !== 'streamer') return;
+  wsSend({ type: 'stage_invite', viewerId });
+  renderSysMsg(`📨 Invited ${username} to stage`);
+}
+
+// Streamer removes viewer from stage
+function removeFromStage(viewerId) {
+  if (myRole !== 'streamer') return;
+  wsSend({ type: 'stage_leave', viewerId });
+  // close peer
+  if (stagePeers[viewerId]) { stagePeers[viewerId].close(); delete stagePeers[viewerId]; }
+  // remove their cam from stage area
+  const el = document.getElementById('stage-cam-' + viewerId);
+  if (el) el.remove();
+  // update watcher list
+  const v = realViewers.get(viewerId);
+  if (v) { v.onStage = false; updateWatcherList(); }
+}
+
+// Viewer receives invite
+function handleStageInvite(from) {
+  const toast = document.getElementById('stage-invite-toast');
+  document.getElementById('sit-from').textContent = `${from} wants you to join with cam & mic.`;
+  toast.style.display = 'flex';
+
+  document.getElementById('sit-accept').onclick = async () => {
+    toast.style.display = 'none';
+    wsSend({ type: 'stage_response', accepted: true });
+    await startMyStage();
+  };
+  document.getElementById('sit-decline').onclick = () => {
+    toast.style.display = 'none';
+    wsSend({ type: 'stage_response', accepted: false });
+  };
+}
+
+// Viewer starts their cam+mic and creates offer to streamer
+async function startMyStage() {
+  try {
+    myStageStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: { echoCancellation: true, noiseSuppression: true } });
+    // Show own preview in stage area
+    const stageArea = document.getElementById('stage-area');
+    const el = document.createElement('div');
+    el.className = 'stage-cam'; el.id = 'stage-cam-self';
+    el.innerHTML = '<video autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;border-radius:6px;"></video><div class="stage-cam-label">You (live)</div><div class="cam-resize-handle"></div>';
+    el.querySelector('video').srcObject = myStageStream;
+    stageArea.appendChild(el);
+    makeDraggableResizable(el, el.querySelector('.cam-resize-handle'), null, 100, 70, 280, 185);
+
+    // Create peer to streamer
+    const ICE_S = iceServers || [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ];
+    const pc = new RTCPeerConnection({ iceServers: ICE_S });
+    stagePeers['streamer'] = pc;
+
+    myStageStream.getTracks().forEach(t => pc.addTrack(t, myStageStream));
+
+    pc.onicecandidate = e => { if (e.candidate) wsSend({ type: 'stage_ice', to: 'streamer', candidate: e.candidate.toJSON() }); };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    wsSend({ type: 'stage_offer', sdp: pc.localDescription });
+
+    renderSysMsg('🎙 You are now on stage!');
+    const lsb = document.getElementById('leave-stage-btn');
+    if (lsb) lsb.style.display = 'inline-flex';
+  } catch (e) {
+    alert('Could not access cam/mic: ' + e.message);
+    wsSend({ type: 'stage_response', accepted: false });
+  }
+}
+
+// Viewer leaves stage voluntarily
+function leaveStage() {
+  if (myStageStream) { myStageStream.getTracks().forEach(t => t.stop()); myStageStream = null; }
+  const el = document.getElementById('stage-cam-self');
+  if (el) el.remove();
+  if (stagePeers['streamer']) { stagePeers['streamer'].close(); delete stagePeers['streamer']; }
+  wsSend({ type: 'stage_leave' });
+  renderSysMsg('You left the stage.');
+  const lsb = document.getElementById('leave-stage-btn');
+  if (lsb) lsb.style.display = 'none';
+}
+
+// Streamer receives stage offer from viewer — sets up receive-only connection
+async function handleStageOffer(sdp, viewerId) {
+  // Guard against duplicate — close existing peer if any
+  if (stagePeers[viewerId]) { stagePeers[viewerId].close(); delete stagePeers[viewerId]; }
+  // Remove existing cam div if it exists (prevents double display)
+  const existing = document.getElementById('stage-cam-' + viewerId);
+  if (existing) existing.remove();
+
+  const ICE_S = iceServers || [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ];
+  const pc = new RTCPeerConnection({ iceServers: ICE_S });
+  stagePeers[viewerId] = pc;
+
+  const remoteStream = new MediaStream();
+  let camElCreated = false;
+
+  pc.ontrack = e => {
+    remoteStream.addTrack(e.track);
+
+    if (e.track.kind === 'video' && !camElCreated) {
+      // Only create the cam div when we actually get a video track
+      camElCreated = true;
+      const stageArea = document.getElementById('stage-area');
+      // Double-check no duplicate
+      const dup = document.getElementById('stage-cam-' + viewerId);
+      if (dup) dup.remove();
+
+      const el = document.createElement('div');
+      el.className = 'stage-cam'; el.id = 'stage-cam-' + viewerId;
+      const video = document.createElement('video');
+      video.autoplay = true; video.playsInline = true;
+      video.srcObject = remoteStream;
+      video.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:6px;';
+      const label = document.createElement('div');
+      label.className = 'stage-cam-label';
+      const v = realViewers.get(viewerId);
+      label.textContent = v ? v.username : viewerId.slice(0,6);
+      const rh = document.createElement('div');
+      rh.className = 'cam-resize-handle';
+      el.appendChild(video); el.appendChild(label); el.appendChild(rh);
+      stageArea.appendChild(el);
+      makeDraggableResizable(el, rh, null, 100, 70, 280, 185);
+      const vname = v?.username || 'Viewer';
+      renderSysMsg('🎙 ' + vname + ' joined the stage!');
+    }
+
+    if (e.track.kind === 'audio') {
+      let a = document.getElementById('stage-audio-' + viewerId);
+      if (!a) { a = document.createElement('audio'); a.id = 'stage-audio-' + viewerId; a.autoplay = true; a.style.display = 'none'; document.body.appendChild(a); }
+      if (!a.srcObject) a.srcObject = new MediaStream();
+      a.srcObject.addTrack(e.track);
+    }
+  };
+
+  pc.onicecandidate = e => { if (e.candidate) wsSend({ type: 'stage_ice', to: viewerId, candidate: e.candidate.toJSON() }); };
+
+  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  wsSend({ type: 'stage_answer', sdp: pc.localDescription, viewerId });
+}
+
+// Viewer receives answer from streamer
+async function handleStageAnswer(sdp) {
+  const pc = stagePeers['streamer'];
+  if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp)).catch(() => {});
+}
+
+// Handle stage ICE
+async function handleStageIce(candidate, from) {
+  const pc = myRole === 'streamer' ? stagePeers[from] : stagePeers['streamer'];
+  if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+}
+
+</script>
+</body>
+</html>
